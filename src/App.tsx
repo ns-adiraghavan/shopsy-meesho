@@ -11,8 +11,8 @@ import { DashboardLayout } from "./components/DashboardLayout";
 import CompetitiveOverview from "./pages/dashboard/CompetitiveOverview";
 import PricingPromoIntelligence from "./pages/dashboard/PricingPromoIntelligence";
 import AssortmentIntelligence from "./pages/dashboard/AssortmentIntelligence";
+import GenZDemandSignals from "./pages/dashboard/GenZDemandSignals";
 // TODO: create
-// import GenZDemandSignals from "./pages/dashboard/GenZDemandSignals";
 // import DemandAvailability from "./pages/dashboard/DemandAvailability";
 // import PromotionBudgetOptimizer from "./pages/dashboard/PromotionBudgetOptimizer";
 import NotFound from "./pages/NotFound";
@@ -33,7 +33,7 @@ const App = () => (
               <Route path="/dashboard" element={<DashboardLayout />}>
                 <Route index element={<CompetitiveOverview />} />
                 <Route path="pricing" element={<PricingPromoIntelligence />} />
-                <Route path="genz" element={<div>Gen Z — coming in next prompt</div>} />
+                <Route path="genz" element={<GenZDemandSignals />} />
                 <Route path="assortment" element={<AssortmentIntelligence />} />
                 <Route path="demand" element={<div>Demand — coming in next prompt</div>} />
                 <Route path="budget" element={<div>Budget — coming in next prompt</div>} />
