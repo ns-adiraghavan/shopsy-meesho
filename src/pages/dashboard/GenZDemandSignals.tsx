@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HelpCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { datasets } from "@/data/dataLoader";
 import {
   BarChart,
@@ -135,8 +136,15 @@ export default function GenZDemandSignals() {
 
   /* ---------- Section 2 — Leaderboard ---------- */
 
+  const leaderboardCategories = useMemo(() => {
+    const s = new Set<string>();
+    meeshoGenz.forEach((r) => s.add(r.category));
+    return [...s].sort();
+  }, [meeshoGenz]);
+
   const leaderboard = useMemo(() => {
-    return [...meeshoGenz]
+    const filtered = leaderboardCat === "All" ? meeshoGenz : meeshoGenz.filter((r) => r.category === leaderboardCat);
+    return [...filtered]
       .sort((a, b) => b.genz_traction_score - a.genz_traction_score)
       .slice(0, 20)
       .map((r, i) => ({
@@ -151,7 +159,7 @@ export default function GenZDemandSignals() {
         ratingDelta: r.rating_delta,
         shopsyListed: shopsyListedSet.has(r.sku_id),
       }));
-  }, [meeshoGenz, skuNameMap, shopsyListedSet]);
+  }, [meeshoGenz, skuNameMap, shopsyListedSet, leaderboardCat]);
 
   /* ---------- Section 3 — Category chart ---------- */
 
@@ -250,6 +258,12 @@ export default function GenZDemandSignals() {
           <CardTitle className="text-base">Gen Z Traction Leaderboard (Meesho)</CardTitle>
           <p className="text-xs text-muted-foreground">Signal source: Meesho · Scores reflect Gen Z keyword rank momentum + review velocity · 14-day window</p>
           <p className="text-xs text-muted-foreground">Top 20 SKUs by Gen Z traction score, latest date</p>
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none mt-2">
+            <Button variant="ghost" size="sm" className={cn("rounded-full h-7 text-xs px-3 shrink-0", leaderboardCat === "All" ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-muted text-muted-foreground hover:bg-muted/70")} onClick={() => setLeaderboardCat("All")}>All</Button>
+            {leaderboardCategories.map((c) => (
+              <Button key={c} variant="ghost" size="sm" className={cn("rounded-full h-7 text-xs px-3 shrink-0", leaderboardCat === c ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-muted text-muted-foreground hover:bg-muted/70")} onClick={() => setLeaderboardCat(c)}>{c}</Button>
+            ))}
+          </div>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="w-full text-xs">
