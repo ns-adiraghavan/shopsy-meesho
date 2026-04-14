@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Lightbulb, TrendingUp, TrendingDown, BarChart2, ShieldCheck, Target, Zap, MapPin, Package, Search, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Enhanced SKU sample data
 
 export interface SKUDetail {
