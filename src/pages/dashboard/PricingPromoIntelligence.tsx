@@ -240,13 +240,12 @@ export default function PricingPromoIntelligence() {
                   <SelectItem value="Meesho">Meesho</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={promoFilterCategory} onValueChange={(v) => { setPromoFilterCategory(v); setPromoPage(0); }}>
-                <SelectTrigger className="h-7 text-xs w-[160px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All Categories</SelectItem>
-                  {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                <Button variant="ghost" size="sm" className={cn("rounded-full h-7 text-xs px-3 shrink-0", promoFilterCategory === "All" ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-muted text-muted-foreground hover:bg-muted/70")} onClick={() => { setPromoFilterCategory("All"); setPromoPage(0); }}>All</Button>
+                {categories.map((c) => (
+                  <Button key={c} variant="ghost" size="sm" className={cn("rounded-full h-7 text-xs px-3 shrink-0", promoFilterCategory === c ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-muted text-muted-foreground hover:bg-muted/70")} onClick={() => { setPromoFilterCategory(c); setPromoPage(0); }}>{c}</Button>
+                ))}
+              </div>
             </div>
           </div>
         </CardHeader>
