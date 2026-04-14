@@ -45,6 +45,8 @@ function KPISimple({ title, value, subtitle, color }: { title: string; value: st
 }
 
 export default function DemandAvailability() {
+  const LATEST_DATE = useMemo(() => datasets.demandSignals.reduce((max, r) => r.date > max ? r.date : max, ""), []);
+
   const skuNameMap = useMemo(() => {
     const m: Record<string, string> = {};
     datasets.skuMaster.forEach((s) => { m[s.sku_id] = s.normalized_name; });
@@ -53,7 +55,7 @@ export default function DemandAvailability() {
 
   const shopsyLatest = useMemo(
     () => datasets.demandSignals.filter((r) => r.platform === "Shopsy" && r.date === LATEST_DATE),
-    []
+    [LATEST_DATE]
   );
 
   /* ---- Section 1 KPIs ---- */

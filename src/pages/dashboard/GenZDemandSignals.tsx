@@ -76,9 +76,11 @@ function KPISimple({ title, value, subtitle, color }: { title: string; value: st
 export default function GenZDemandSignals() {
   /* ---------- base data ---------- */
 
+  const LATEST_DATE = useMemo(() => datasets.genzTraction.reduce((max, r) => r.date > max ? r.date : max, ""), []);
+
   const meeshoGenz = useMemo(
     () => datasets.genzTraction.filter((r) => r.platform === "Meesho" && r.date === LATEST_DATE),
-    []
+    [LATEST_DATE]
   );
 
   const skuNameMap = useMemo(() => {
@@ -101,7 +103,7 @@ export default function GenZDemandSignals() {
       .filter((r) => r.platform === "Shopsy" && r.date === LATEST_DATE)
       .forEach((r) => { m[r.sku_id] = r.promotion_flag; });
     return m;
-  }, []);
+  }, [LATEST_DATE]);
 
   const shopsyGapMap = useMemo(() => {
     const m: Record<string, number> = {};
@@ -109,7 +111,7 @@ export default function GenZDemandSignals() {
       .filter((r) => r.platform === "Shopsy" && r.date === LATEST_DATE)
       .forEach((r) => { m[r.sku_id] = r.price_gap_pct; });
     return m;
-  }, []);
+  }, [LATEST_DATE]);
 
   /* ---------- Section 1 — KPIs ---------- */
 
