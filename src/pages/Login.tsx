@@ -150,7 +150,7 @@ const Login = () => {
 
         {/* Platform badges */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
-          {["Blinkit", "Zepto", "Swiggy Instamart", "BigBasket Now"].map((p) => (
+          {["Shopsy", "Meesho"].map((p) => (
             <span
               key={p}
               className="px-2.5 py-1 rounded-full border border-border/60 bg-muted/60 text-[10px] font-medium text-muted-foreground"
