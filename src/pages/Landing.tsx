@@ -1,4 +1,4 @@
-import { Tag, Search, Package, CheckCircle2, MapPin, Activity, LayoutDashboard, Moon, Sun } from "lucide-react";
+import { Tag, Search, Package, CheckCircle2, Activity, LayoutDashboard, Moon, Sun } from "lucide-react";
 import logoColor from "@/assets/netscribes-logo-color.png";
 import logoWhite from "@/assets/netscribes-logo-white.png";
 import { useTheme } from "next-themes";
@@ -10,50 +10,43 @@ const MODULES = [
     icon: LayoutDashboard,
     label: "Competitive Overview",
     path: "/dashboard",
-    kpis: ["Avg Price Gap vs Competitors", "Availability Rate", "Search Visibility", "SKU Coverage"],
-    description: "Composite platform scorecard with category price heatmap and pressure analysis.",
+    kpis: ["Composite Score", "Price Gap %", "Promo Intensity", "Availability Rate"],
+    description: "Side-by-side Shopsy vs Meesho scorecard with category pressure map and event feed.",
   },
   {
     icon: Tag,
-    label: "Pricing & Promotion",
+    label: "Pricing & Promotions",
     path: "/dashboard/pricing",
-    kpis: ["Average Discount", "Promotion Intensity", "SKUs Under Promotion", "Price Observations"],
-    description: "Track price movements, discount depth, and promotional activity across platforms.",
+    kpis: ["Avg Price Gap", "SKUs Overpriced", "Discount Depth", "Flash Sale Candidates"],
+    description: "Price gap tracking across 600 SKUs in Fashion, Beauty & Accessories.",
   },
   {
     icon: Search,
-    label: "Search & Shelf Visibility",
-    path: "/dashboard/search",
-    kpis: ["Page-1 Presence", "Elite Rank Share", "Keywords Tracked", "Search Observations"],
-    description: "Monitor top-10 and top-3 search placements, sponsored share, and rank distribution.",
+    label: "Gen Z Demand Signals",
+    path: "/dashboard/genz",
+    kpis: ["Trending SKUs", "Gen Z Score", "Keyword Rank", "Review Velocity"],
+    description: "Gen Z traction scoring powered by keyword rank and review velocity on Meesho.",
   },
   {
     icon: Package,
     label: "Assortment Intelligence",
     path: "/dashboard/assortment",
-    kpis: ["SKU Coverage %", "Listed SKUs", "Missing SKUs", "Categories Covered"],
-    description: "Analyse SKU breadth, coverage gaps, and platform-exclusive listings by category.",
+    kpis: ["SKU Coverage %", "Gap Brands", "Quick-Add Candidates", "Category Depth"],
+    description: "Assortment gap analysis with quick-add candidate identification across platforms.",
   },
   {
     icon: CheckCircle2,
-    label: "Availability Intelligence",
-    path: "/dashboard/availability",
-    kpis: ["Avg Availability Rate", "Best Platform", "Lowest Platform", "Availability Gap"],
-    description: "Track stockout risk, fill rates, must-have SKU health, and category availability.",
-  },
-  {
-    icon: MapPin,
-    label: "Local Market Intelligence",
-    path: "/dashboard/local",
-    kpis: ["Avg City Score", "Best Performing City", "Lowest Performing City", "Cities Tracked"],
-    description: "City-level deep dives into availability, pricing variance, and search competitiveness.",
+    label: "Demand & Availability",
+    path: "/dashboard/demand",
+    kpis: ["Demand Score", "Stockout Risk", "Lost Demand Proxy", "Must-Have Health"],
+    description: "Demand intensity signals and stockout risk tracking for supply-side prioritisation.",
   },
   {
     icon: Activity,
-    label: "Competitive Risk & Volatility",
-    path: "/dashboard/events",
-    kpis: ["Events Detected", "Price Drop Alerts", "Promotion Alerts", "Stockout Alerts"],
-    description: "Monitor competitor events, price volatility, rank instability, and SKU availability risk.",
+    label: "Promotion Budget Optimizer",
+    path: "/dashboard/budget",
+    kpis: ["ROI Score", "GMV Uplift (Est.)", "Budget Utilisation", "Promo Type Mix"],
+    description: "Promotion budget optimizer with SKU-level GMV uplift estimates.",
   },
 ];
 
@@ -69,7 +62,7 @@ const Landing = () => {
             <div className="flex items-center">
               <img
                 src={theme === "dark" ? logoWhite : logoColor}
-                alt="Netscribes"
+                alt="Netscribes — Shopsy vs Meesho Intelligence"
                 className="h-8 w-auto object-contain"
               />
             </div>
@@ -88,15 +81,23 @@ const Landing = () => {
       {/* Hero */}
       <section className="container mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-10 text-center max-w-3xl">
         <h1 className="text-4xl lg:text-5xl font-bold tracking-tight mb-4">
-          Quick-Commerce{" "}
-          <span className="text-primary">Intelligence Platform</span>
+          Shopsy vs Meesho —{" "}
+          <span className="text-primary">Competitive Intelligence Dashboard</span>
         </h1>
         <p className="text-base lg:text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
-          Real-time competitive intelligence across pricing, availability, search, and assortment — for Zepto, Blinkit, Swiggy Instamart, and BigBasket Now.
+          Track pricing gaps, Gen Z demand signals, assortment gaps, and promotion opportunities across India's leading social commerce platforms.
         </p>
-        <Button size="lg" asChild>
-          <Link to="/login">Open Dashboard →</Link>
-        </Button>
+        <div className="flex flex-col items-center gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left text-sm text-muted-foreground max-w-lg">
+            <span>✦ Price gap tracking across 600 SKUs in Fashion, Beauty & Accessories</span>
+            <span>✦ Gen Z traction scoring powered by keyword rank and review velocity</span>
+            <span>✦ Promotion budget optimizer with SKU-level GMV uplift estimates</span>
+            <span>✦ Assortment gap analysis with quick-add candidate identification</span>
+          </div>
+          <Button size="lg" asChild>
+            <Link to="/login">View Dashboard</Link>
+          </Button>
+        </div>
       </section>
 
       {/* Module Grid */}
@@ -136,10 +137,10 @@ const Landing = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-center gap-3">
           <img
             src={theme === "dark" ? logoWhite : logoColor}
-            alt="Netscribes"
+            alt="Netscribes — Shopsy vs Meesho Intelligence"
             className="h-5 w-auto object-contain"
           />
-          <span className="text-xs text-muted-foreground">© 2024 Netscribes · Public data competitive intelligence</span>
+          <span className="text-xs text-muted-foreground">© 2025 Netscribes · Shopsy vs Meesho Competitive Intelligence</span>
         </div>
       </footer>
     </div>
