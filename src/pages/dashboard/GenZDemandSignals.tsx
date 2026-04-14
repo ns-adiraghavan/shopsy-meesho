@@ -81,6 +81,7 @@ function KPISimple({ title, value, subtitle, color, tooltip }: { title: string; 
 
 export default function GenZDemandSignals() {
   /* ---------- base data ---------- */
+  const [leaderboardCat, setLeaderboardCat] = useState("All");
 
   const LATEST_DATE = useMemo(() => datasets.genzTraction.reduce((max, r) => r.date > max ? r.date : max, ""), []);
 
