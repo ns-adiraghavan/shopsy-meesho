@@ -29,12 +29,12 @@ import logoColor from "@/assets/netscribes-logo-color.png";
 import logoWhite from "@/assets/netscribes-logo-white.png";
 
 const navItems = [
+  { title: "Promotion Budget Optimizer", url: "/dashboard/budget",    icon: Wallet },
   { title: "Competitive Overview",      url: "/dashboard",            icon: LayoutDashboard },
   { title: "Pricing & Promotions",      url: "/dashboard/pricing",    icon: Tag },
   { title: "Gen Z Demand Signals",      url: "/dashboard/genz",       icon: Sparkles },
   { title: "Assortment Intelligence",   url: "/dashboard/assortment", icon: Package },
   { title: "Demand & Availability",     url: "/dashboard/demand",     icon: CheckCircle2 },
-  { title: "Promotion Budget Optimizer", url: "/dashboard/budget",    icon: Wallet },
 ];
 
 export function AppSidebar() {
