@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useData } from "@/contexts/DataContext";
 
 export function DashboardLayout() {
-  const { loaded } = useData();
+  const { loaded: _loaded } = useData();
   const navigate = useNavigate();
 
   return (
