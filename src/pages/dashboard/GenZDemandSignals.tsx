@@ -79,7 +79,7 @@ export default function GenZDemandSignals() {
   const LATEST_DATE = useMemo(() => datasets.genzTraction.reduce((max, r) => r.date > max ? r.date : max, ""), []);
 
   const meeshoGenz = useMemo(
-    () => datasets.genzTraction.filter((r) => r.platform === "Meesho" && r.date === LATEST_DATE),
+    () => datasets.genzTraction.filter((r) => r.platform === "Meesho" && r.date.slice(0, 10) === LATEST_DATE.slice(0, 10)),
     [LATEST_DATE]
   );
 
@@ -100,7 +100,7 @@ export default function GenZDemandSignals() {
   const shopsyPromoMap = useMemo(() => {
     const m: Record<string, number> = {};
     datasets.priceTracking
-      .filter((r) => r.platform === "Shopsy" && r.date === LATEST_DATE)
+      .filter((r) => r.platform === "Shopsy" && r.date.slice(0, 10) === LATEST_DATE.slice(0, 10))
       .forEach((r) => { m[r.sku_id] = r.promotion_flag; });
     return m;
   }, [LATEST_DATE]);
@@ -108,7 +108,7 @@ export default function GenZDemandSignals() {
   const shopsyGapMap = useMemo(() => {
     const m: Record<string, number> = {};
     datasets.priceTracking
-      .filter((r) => r.platform === "Shopsy" && r.date === LATEST_DATE)
+      .filter((r) => r.platform === "Shopsy" && r.date.slice(0, 10) === LATEST_DATE.slice(0, 10))
       .forEach((r) => { m[r.sku_id] = r.price_gap_pct; });
     return m;
   }, [LATEST_DATE]);
@@ -162,7 +162,7 @@ export default function GenZDemandSignals() {
 
   const keywordComparison = useMemo(() => {
     const latest = datasets.searchRankTracking.filter(
-      (r) => r.date === LATEST_DATE && r.keyword_genz_flag === 1
+      (r) => r.date.slice(0, 10) === LATEST_DATE.slice(0, 10) && r.keyword_genz_flag === 1
     );
     const map: Record<string, { shopsy: number[]; meesho: number[] }> = {};
     latest.forEach((r) => {
