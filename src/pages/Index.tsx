@@ -53,8 +53,8 @@ const Index = () => {
                 </span>
               </Button>
               <div className="flex items-center gap-2 text-sm text-muted-foreground group relative">
-                <div className="w-2 h-2 rounded-full bg-success animate-pulse"></div>
-                <span>Live Data</span>
+                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                <span>Synthetic Data — Apr 2026</span>
                 {hasAnyAdjustments() && (
                   <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse ml-2"></div>
                 )}

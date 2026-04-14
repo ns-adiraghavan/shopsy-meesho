@@ -112,8 +112,8 @@ export function AppSidebar() {
         </div>
         {!collapsed && (
           <div className="flex items-center gap-2 px-2 py-1">
-            <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-            <span className="text-xs text-muted-foreground">Live Data</span>
+            <div className="w-2 h-2 rounded-full bg-amber-500" />
+            <span className="text-xs text-muted-foreground">Synthetic Data — Apr 2026</span>
           </div>
         )}
       </SidebarFooter>

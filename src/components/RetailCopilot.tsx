@@ -224,7 +224,7 @@ export function RetailCopilot() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground leading-tight">
-                Retail Intelligence Copilot
+                Insightly — Shopsy vs Meesho
               </p>
               <p className="text-[11px] text-muted-foreground truncate">
                 {currentPage}
