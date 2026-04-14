@@ -1,244 +1,331 @@
-// @ts-nocheck
-import { KPICard } from "@/components/dashboard/KPICard";
-import { getAssortmentData, getListingCountByPlatform, datasets, GlobalFilters } from "@/data/dataLoader";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Package } from "lucide-react";
-import { useOutletContext } from "react-router-dom";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { StrategicInsightsPanel, type Insight } from "@/components/dashboard/StrategicInsightsPanel";
-import { PageControlBar } from "@/components/dashboard/PageControlBar";
-import { CrossPlatformSelectionBenchmarking } from "@/components/dashboard/CrossPlatformSelectionBenchmarking";
+import { useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { datasets } from "@/data/dataLoader";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  Legend,
+  LabelList,
+} from "recharts";
 
+const LATEST_DATE = "2026-04-14";
 
-const AssortmentIntelligence = () => {
-  const filters = useOutletContext<GlobalFilters>();
+function avg(nums: number[]): number {
+  if (nums.length === 0) return 0;
+  return nums.reduce((a, b) => a + b, 0) / nums.length;
+}
 
-  const assortmentData = getAssortmentData(filters);
-  const listingByPlatform = getListingCountByPlatform(filters);
-
-  const listedCount = assortmentData.filter((r) => r.listing_status === 1).length;
-  const missingCount = assortmentData.filter((r) => r.listing_status === 0).length;
-  const coverageRate = assortmentData.length > 0 ? (listedCount / assortmentData.length) * 100 : 0;
-  const categoryCount = new Set(assortmentData.map((r) => r.category)).size;
-
-  const kpis = [
-    { title: "SKU Coverage", value: `${coverageRate.toFixed(1)}%`, trend: "neutral" as const, tooltip: "Share of SKUs listed across tracked platforms" },
-    { title: "Listed SKUs", value: listedCount.toLocaleString(), trend: "neutral" as const, tooltip: "Number of SKUs currently listed (listing_status = 1)" },
-    { title: "Missing SKUs", value: missingCount.toLocaleString(), trend: "down" as const, tooltip: "Number of SKUs missing from the selected platform" },
-    { title: "Categories Covered", value: categoryCount.toLocaleString(), trend: "neutral" as const, tooltip: "Distinct product categories tracked" },
-  ];
-
-  // ── Category SKU Coverage Grid ─────────────────────────────────────────────
-  const PLATFORMS = ["Zepto", "Blinkit", "Swiggy Instamart", "BigBasket Now"];
-
-  const coverageRaw: Record<string, Record<string, number>> = {};
-  assortmentData.forEach((row) => {
-    if (row.listing_status !== 1) return;
-    if (!coverageRaw[row.category]) coverageRaw[row.category] = {};
-    coverageRaw[row.category][row.platform] = (coverageRaw[row.category][row.platform] ?? 0) + 1;
-  });
-
-  // Build distinct SKU count per category (all platforms combined, unfiltered)
-  const categorySkuRaw: Record<string, Set<string>> = {};
-  datasets.assortmentTracking
-    .filter((r) => r.listing_status === 1)
-    .forEach((r) => {
-      if (!categorySkuRaw[r.category]) categorySkuRaw[r.category] = new Set();
-      categorySkuRaw[r.category].add(r.sku_id);
-    });
-
-  const categoryPlatformRows = Object.entries(categorySkuRaw)
-    .map(([category, skuSet]) => ({ category, "Distinct SKUs": skuSet.size }))
-    .sort((a, b) => b["Distinct SKUs"] - a["Distinct SKUs"])
-    .slice(0, 8);
-
-  const coverageGrid = Object.entries(coverageRaw)
-    .map(([category, platforms]) => ({ category, ...platforms }))
-    .sort((a, b) => a.category.localeCompare(b.category));
-
-  const maxCount = Math.max(
-    1,
-    ...coverageGrid.flatMap((row) =>
-      PLATFORMS.map((p) => (row as Record<string, number | string>)[p] as number ?? 0)
-    )
+function KPISimple({ title, value, subtitle, color }: { title: string; value: string; subtitle?: string; color?: "red" | "green" | "amber" }) {
+  const border = color === "red"
+    ? "border-l-4 border-l-red-500"
+    : color === "green"
+      ? "border-l-4 border-l-emerald-500"
+      : color === "amber"
+        ? "border-l-4 border-l-amber-500"
+        : "border-l-4 border-l-border";
+  return (
+    <Card className={cn("bg-gradient-card", border)}>
+      <CardHeader className="pb-1">
+        <CardTitle className="text-xs font-medium text-muted-foreground">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-2xl font-bold">{value}</p>
+        {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
+      </CardContent>
+    </Card>
   );
+}
 
-  const getCellIntensity = (count: number) => {
-    if (!count) return "bg-muted/20 text-muted-foreground/40 border-border/20";
-    const pct = count / maxCount;
-    if (pct >= 0.66) return "bg-status-low/20 text-status-low border-status-low/30";
-    if (pct >= 0.33) return "bg-status-medium/20 text-status-medium border-status-medium/30";
-    return "bg-status-high/10 text-status-high border-status-high/20";
-  };
+export default function AssortmentIntelligence() {
+  /* ---------- base lookups ---------- */
+
+  const skuNameMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    datasets.skuMaster.forEach((s) => { m[s.sku_id] = s.normalized_name; });
+    return m;
+  }, []);
+
+  const meeshoListedSet = useMemo(() => {
+    const s = new Set<string>();
+    datasets.assortmentTracking.filter((r) => r.platform === "Meesho" && r.listing_status === 1).forEach((r) => s.add(r.sku_id));
+    return s;
+  }, []);
+
+  const shopsyListedSet = useMemo(() => {
+    const s = new Set<string>();
+    datasets.assortmentTracking.filter((r) => r.platform === "Shopsy" && r.listing_status === 1).forEach((r) => s.add(r.sku_id));
+    return s;
+  }, []);
+
+  const genzScoreMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    datasets.genzTraction
+      .filter((r) => r.platform === "Meesho" && r.date === LATEST_DATE)
+      .forEach((r) => { m[r.sku_id] = r.genz_traction_score; });
+    return m;
+  }, []);
+
+  const meeshoPromoMap = useMemo(() => {
+    const m: Record<string, { flag: number; discount: number }> = {};
+    datasets.priceTracking
+      .filter((r) => r.platform === "Meesho" && r.date === LATEST_DATE)
+      .forEach((r) => { m[r.sku_id] = { flag: r.promotion_flag, discount: r.discount_percent }; });
+    return m;
+  }, []);
+
+  const shopsyPromoMap = useMemo(() => {
+    const m: Record<string, { flag: number; discount: number }> = {};
+    datasets.priceTracking
+      .filter((r) => r.platform === "Shopsy" && r.date === LATEST_DATE)
+      .forEach((r) => { m[r.sku_id] = { flag: r.promotion_flag, discount: r.discount_percent }; });
+    return m;
+  }, []);
+
+  /* ---------- Section 1 — KPIs ---------- */
+
+  const totalSKUs = datasets.skuMaster.length;
+  const meeshoListedCount = meeshoListedSet.size;
+  const shopsyListedCount = shopsyListedSet.size;
+  const assortmentGapCount = useMemo(() => {
+    let count = 0;
+    meeshoListedSet.forEach((id) => { if (!shopsyListedSet.has(id)) count++; });
+    return count;
+  }, [meeshoListedSet, shopsyListedSet]);
+
+  /* ---------- Section 2 — Brand Penetration ---------- */
+
+  const brandPenetrationData = useMemo(() => {
+    const groups: Record<string, { shopsy: number[]; meesho: number[] }> = {
+      National: { shopsy: [], meesho: [] },
+      "Meesho-Leaning": { shopsy: [], meesho: [] },
+      "Shopsy-Exclusive": { shopsy: [], meesho: [] },
+    };
+    const affinityLabel = (a: string) => {
+      if (a === "national") return "National";
+      if (a === "meesho") return "Meesho-Leaning";
+      return "Shopsy-Exclusive";
+    };
+    datasets.assortmentTracking.forEach((r) => {
+      const label = affinityLabel(r.brand_affinity);
+      const group = groups[label];
+      if (!group) return;
+      if (r.platform === "Shopsy") group.shopsy.push(r.listing_status);
+      if (r.platform === "Meesho") group.meesho.push(r.listing_status);
+    });
+    return Object.entries(groups).map(([name, v]) => ({
+      group: name,
+      Shopsy: +(avg(v.shopsy) * 100).toFixed(1),
+      Meesho: +(avg(v.meesho) * 100).toFixed(1),
+    }));
+  }, []);
+
+  /* ---------- Section 3 — Gap Priority List ---------- */
+
+  const gapPriorityList = useMemo(() => {
+    const rows: Array<{ sku_id: string; name: string; brand: string; affinity: string; category: string; genzScore: number }> = [];
+    meeshoListedSet.forEach((id) => {
+      if (shopsyListedSet.has(id)) return;
+      const master = datasets.skuMaster.find((s) => s.sku_id === id);
+      rows.push({
+        sku_id: id,
+        name: skuNameMap[id] || id,
+        brand: master?.brand || "",
+        affinity: master?.brand_affinity || "",
+        category: master?.category || "",
+        genzScore: genzScoreMap[id] ?? 0,
+      });
+    });
+    return rows.sort((a, b) => b.genzScore - a.genzScore);
+  }, [meeshoListedSet, shopsyListedSet, skuNameMap, genzScoreMap]);
+
+  /* ---------- Section 4 — Quick-Add Candidates ---------- */
+
+  const quickAddCandidates = useMemo(() => {
+    const rows: Array<{
+      sku_id: string; name: string; brand: string; category: string;
+      meeshoDiscount: number; shopsyDiscount: number; genzScore: number;
+    }> = [];
+    meeshoListedSet.forEach((id) => {
+      if (!shopsyListedSet.has(id)) return;
+      const mp = meeshoPromoMap[id];
+      const sp = shopsyPromoMap[id];
+      if (!mp || mp.flag !== 1) return;
+      if (sp && sp.flag === 1) return;
+      const master = datasets.skuMaster.find((s) => s.sku_id === id);
+      rows.push({
+        sku_id: id,
+        name: skuNameMap[id] || id,
+        brand: master?.brand || "",
+        category: master?.category || "",
+        meeshoDiscount: mp.discount,
+        shopsyDiscount: sp?.discount ?? 0,
+        genzScore: genzScoreMap[id] ?? 0,
+      });
+    });
+    return rows.sort((a, b) => b.genzScore - a.genzScore);
+  }, [meeshoListedSet, shopsyListedSet, meeshoPromoMap, shopsyPromoMap, skuNameMap, genzScoreMap]);
+
+  /* ---------- Section 5 — Category Depth ---------- */
+
+  const categoryDepthData = useMemo(() => {
+    const map: Record<string, { shopsy: Set<string>; meesho: Set<string> }> = {};
+    datasets.assortmentTracking
+      .filter((r) => r.listing_status === 1)
+      .forEach((r) => {
+        const entry = (map[r.category] ??= { shopsy: new Set(), meesho: new Set() });
+        if (r.platform === "Shopsy") entry.shopsy.add(r.sku_id);
+        if (r.platform === "Meesho") entry.meesho.add(r.sku_id);
+      });
+    return Object.entries(map)
+      .map(([category, v]) => ({ category, Shopsy: v.shopsy.size, Meesho: v.meesho.size }))
+      .sort((a, b) => b.Meesho - a.Meesho);
+  }, []);
+
+  /* ---------- render ---------- */
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-primary">
-          <Package className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold">Assortment & Product Mix Intelligence</h1>
-          <p className="text-sm text-muted-foreground">Analyse SKU breadth, exclusive listings, and product mix gaps across platforms</p>
-        </div>
+    <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
+      <h1 className="text-lg font-semibold">Assortment Intelligence</h1>
+
+      {/* Section 1 — KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KPISimple title="Total SKUs Tracked" value={totalSKUs.toString()} />
+        <KPISimple title="Meesho Listed" value={meeshoListedCount.toString()} color="amber" />
+        <KPISimple title="Shopsy Listed" value={shopsyListedCount.toString()} color="green" />
+        <KPISimple title="Assortment Gap (Meesho-only)" value={assortmentGapCount.toString()} subtitle="SKUs on Meesho but not Shopsy" color="red" />
       </div>
 
-      <PageControlBar exportLabel="assortment_tracking" exportData={assortmentData as unknown as Record<string, unknown>[]} />
+      {/* Section 2 — Brand Penetration */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Brand Penetration by Affinity</CardTitle>
+          <p className="text-xs text-muted-foreground">Listing rate (%) on each platform, grouped by brand affinity</p>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={brandPenetrationData} margin={{ left: 10, right: 20, top: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="group" fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
+              <YAxis tickFormatter={(v: number) => `${v}%`} fontSize={11} domain={[0, 100]} />
+              <RechartsTooltip formatter={(v: number) => [`${v}%`, ""]} />
+              <Legend verticalAlign="top" height={28} />
+              <Bar dataKey="Shopsy" fill="hsl(217, 91%, 60%)" radius={[4, 4, 0, 0]}>
+                <LabelList dataKey="Shopsy" position="top" fontSize={10} formatter={(v: number) => `${v}%`} />
+              </Bar>
+              <Bar dataKey="Meesho" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]}>
+                <LabelList dataKey="Meesho" position="top" fontSize={10} formatter={(v: number) => `${v}%`} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">KPI Summary</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {kpis.map((kpi, i) => <KPICard key={i} {...kpi} />)}
-        </div>
-      </section>
+      {/* Section 3 — Gap Priority */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Assortment Gap Priority List</CardTitle>
+          <p className="text-xs text-muted-foreground">SKUs listed on Meesho but missing from Shopsy, ranked by Gen Z traction</p>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border">
+                {["Product Name", "Brand", "Brand Affinity", "Category", "Gen Z Score", "Priority"].map((h) => (
+                  <th key={h} className="text-left py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {gapPriorityList.length === 0 ? (
+                <tr><td colSpan={6} className="py-6 text-center text-muted-foreground">No assortment gaps found.</td></tr>
+              ) : gapPriorityList.slice(0, 30).map((r, i) => (
+                <tr key={`${r.sku_id}-${i}`} className="border-b border-border/40 hover:bg-muted/30">
+                  <td className="py-1.5 px-2 max-w-[200px] truncate font-medium">{r.name}</td>
+                  <td className="py-1.5 px-2">{r.brand}</td>
+                  <td className="py-1.5 px-2 capitalize">{r.affinity}</td>
+                  <td className="py-1.5 px-2">{r.category}</td>
+                  <td className="py-1.5 px-2 font-medium">{r.genzScore > 0 ? r.genzScore.toFixed(0) : "\u2014"}</td>
+                  <td className="py-1.5 px-2">
+                    {r.genzScore > 65 ? (
+                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0">High Priority</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Standard</Badge>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
 
-      {(() => {
-        const platformListTotals = listingByPlatform.map((p) => ({ platform: p.platform, total: p.listed })).sort((a, b) => b.total - a.total);
-        const skuLeader = platformListTotals[0];
-        const catZeptoRaw: Record<string, number> = {};
-        const catCompRaw: Record<string, { sum: number; count: number }> = {};
-        assortmentData.filter((r) => r.listing_status === 1).forEach((r) => {
-          if (r.platform === "Zepto") {
-            catZeptoRaw[r.category] = (catZeptoRaw[r.category] ?? 0) + 1;
-          } else {
-            if (!catCompRaw[r.category]) catCompRaw[r.category] = { sum: 0, count: 0 };
-            catCompRaw[r.category].sum += 1;
-            catCompRaw[r.category].count++;
-          }
-        });
-        const worstCatGap = Object.keys(catZeptoRaw)
-          .filter((cat) => catCompRaw[cat])
-          .map((cat) => ({ cat, zepto: catZeptoRaw[cat], compAvg: catCompRaw[cat].sum / 3, gap: catCompRaw[cat].sum / 3 - catZeptoRaw[cat] }))
-          .sort((a, b) => b.gap - a.gap)[0];
-        const deepestCat = Object.entries(coverageRaw)
-          .map(([category, platMap]) => ({ category, total: Object.values(platMap).reduce((s, v) => s + v, 0) }))
-          .sort((a, b) => b.total - a.total)[0];
+      {/* Section 4 — Quick-Add */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Quick-Add Candidates</CardTitle>
+          <p className="text-xs text-muted-foreground">Shopsy carries these but isn&apos;t promoting &mdash; Meesho is</p>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border">
+                {["Product", "Brand", "Category", "Meesho Discount %", "Shopsy Discount %", "Gen Z Score", "Action"].map((h) => (
+                  <th key={h} className="text-left py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {quickAddCandidates.length === 0 ? (
+                <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">No quick-add candidates found.</td></tr>
+              ) : quickAddCandidates.slice(0, 30).map((r, i) => (
+                <tr key={`${r.sku_id}-${i}`} className="border-b border-border/40 hover:bg-muted/30">
+                  <td className="py-1.5 px-2 max-w-[180px] truncate font-medium">{r.name}</td>
+                  <td className="py-1.5 px-2">{r.brand}</td>
+                  <td className="py-1.5 px-2">{r.category}</td>
+                  <td className="py-1.5 px-2">{r.meeshoDiscount.toFixed(1)}%</td>
+                  <td className="py-1.5 px-2">{r.shopsyDiscount.toFixed(1)}%</td>
+                  <td className="py-1.5 px-2 font-medium">{r.genzScore > 0 ? r.genzScore.toFixed(0) : "\u2014"}</td>
+                  <td className="py-1.5 px-2">
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0">Promote on Shopsy</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
 
-        const insights: Insight[] = [
-          skuLeader ? { icon: "package", title: "SKU Coverage Leader", body: `${skuLeader.platform} has the broadest assortment with ${skuLeader.total.toLocaleString()} listed SKUs.`, type: "positive" }
-            : { icon: "package", title: "SKU Coverage Leader", body: "No listing data available.", type: "neutral" },
-          worstCatGap ? { icon: "trend-down", title: "Category Assortment Gap", body: `Zepto carries ${worstCatGap.zepto} SKUs in ${worstCatGap.cat} versus a competitor average of ${worstCatGap.compAvg.toFixed(0)} — the widest assortment gap.`, type: "warning" }
-            : { icon: "trend-down", title: "Category Assortment Gap", body: "No gap data available.", type: "neutral" },
-          deepestCat ? { icon: "chart", title: "Assortment Depth", body: `${deepestCat.category} has the highest total SKU listings across platforms (${deepestCat.total.toLocaleString()} listings).`, type: "positive" }
-            : { icon: "chart", title: "Assortment Depth", body: "No depth data available.", type: "neutral" },
-        ];
-        return <StrategicInsightsPanel insights={insights} />;
-      })()}
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Category Assortment Coverage</h2>
-        <Card className="bg-gradient-card">
-          <CardHeader>
-            <CardTitle>Category Assortment Coverage</CardTitle>
-            <CardDescription>Distinct listed SKUs per category by platform — top 8 categories by total SKU count</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {categoryPlatformRows.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No data available.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={360}>
-                <BarChart data={categoryPlatformRows} margin={{ top: 4, right: 16, left: 0, bottom: 90 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="category" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" interval={0} height={80} />
-                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Distinct SKUs", angle: -90, position: "insideLeft", offset: 10, style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }} />
-                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} formatter={(value: number) => [`${value} SKUs`, "Distinct SKUs"]} />
-                  <Bar dataKey="Distinct SKUs" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} maxBarSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Category Assortment Depth</h2>
-        <Card className="bg-gradient-card">
-          <CardHeader>
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <CardTitle>Category Assortment Depth</CardTitle>
-                <CardDescription>Listed SKU count by category and platform</CardDescription>
-              </div>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-status-low/30 border border-status-low/30 inline-block" />High coverage</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-status-medium/30 border border-status-medium/30 inline-block" />Moderate</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-status-high/10 border border-status-high/20 inline-block" />Low coverage</span>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {coverageGrid.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No listed SKUs for selected filters.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-2 px-3 font-medium text-muted-foreground min-w-[160px]">Category</th>
-                      {PLATFORMS.map((p) => <th key={p} className="text-center py-2 px-2 font-medium text-muted-foreground min-w-[120px]">{p}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {coverageGrid.map((row) => (
-                      <tr key={row.category} className="border-b border-border/40">
-                        <td className="py-2 px-3 font-medium">{row.category}</td>
-                        {PLATFORMS.map((platform) => {
-                          const count = (row as Record<string, number | string>)[platform] as number ?? 0;
-                          return (
-                            <td key={platform} className="p-2 text-center">
-                              <div className={`rounded-md px-2 py-2 text-xs font-semibold border transition-all hover:scale-105 cursor-default ${getCellIntensity(count)}`}>
-                                {count > 0 ? count : "—"}
-                              </div>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Platform Assortment Analysis</h2>
-        <Card className="bg-gradient-card">
-          <CardHeader>
-            <CardTitle>Listed vs Missing SKUs by Platform</CardTitle>
-            <CardDescription>Share of tracked SKUs currently listed per platform</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {listingByPlatform.map((p) => {
-                const total = p.listed + p.notListed;
-                const listedPct = total > 0 ? (p.listed / total) * 100 : 0;
-                return (
-                  <div key={p.platform} className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-medium">{p.platform}</span>
-                      <span className="text-muted-foreground">{p.listed.toLocaleString()} listed · {p.notListed.toLocaleString()} missing</span>
-                    </div>
-                    <div className="flex h-2 rounded-full overflow-hidden bg-muted">
-                      <div className="bg-status-low h-full" style={{ width: `${listedPct}%` }} />
-                      <div className="bg-status-high h-full flex-1" />
-                    </div>
-                  </div>
-                );
-              })}
-              <div className="flex gap-4 text-xs text-muted-foreground pt-1">
-                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-status-low" />Listed</div>
-                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-status-high" />Missing</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      <CrossPlatformSelectionBenchmarking filters={filters} />
+      {/* Section 5 — Category Depth */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Category Assortment Depth</CardTitle>
+          <p className="text-xs text-muted-foreground">Distinct listed SKUs per category, Shopsy vs Meesho</p>
+        </CardHeader>
+        <CardContent>
+          {categoryDepthData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={Math.max(300, categoryDepthData.length * 34)}>
+              <BarChart data={categoryDepthData} layout="vertical" margin={{ left: 150, right: 30, top: 5, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" fontSize={11} />
+                <YAxis type="category" dataKey="category" width={140} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
+                <RechartsTooltip />
+                <Legend verticalAlign="top" height={28} />
+                <Bar dataKey="Shopsy" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="Meesho" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-muted-foreground py-8 text-center">No assortment data available.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
-};
-
-export default AssortmentIntelligence;
+}
