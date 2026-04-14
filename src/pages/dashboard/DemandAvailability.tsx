@@ -16,7 +16,7 @@ import {
   Line,
 } from "recharts";
 
-const LATEST_DATE = "2026-04-14";
+
 
 function avg(nums: number[]): number {
   if (nums.length === 0) return 0;
