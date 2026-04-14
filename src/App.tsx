@@ -13,8 +13,7 @@ import PricingPromoIntelligence from "./pages/dashboard/PricingPromoIntelligence
 import AssortmentIntelligence from "./pages/dashboard/AssortmentIntelligence";
 import GenZDemandSignals from "./pages/dashboard/GenZDemandSignals";
 import DemandAvailability from "./pages/dashboard/DemandAvailability";
-// TODO: create
-// import PromotionBudgetOptimizer from "./pages/dashboard/PromotionBudgetOptimizer";
+import PromotionBudgetOptimizer from "./pages/dashboard/PromotionBudgetOptimizer";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,7 +35,7 @@ const App = () => (
                 <Route path="genz" element={<GenZDemandSignals />} />
                 <Route path="assortment" element={<AssortmentIntelligence />} />
                 <Route path="demand" element={<DemandAvailability />} />
-                <Route path="budget" element={<div>Budget — coming in next prompt</div>} />
+                <Route path="budget" element={<PromotionBudgetOptimizer />} />
               </Route>
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
