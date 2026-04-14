@@ -109,7 +109,7 @@ export default function DemandAvailability() {
         Meesho: +(avg(v.meesho) * 100).toFixed(1),
       }))
       .sort((a, b) => b.Shopsy - a.Shopsy);
-  }, []);
+  }, [LATEST_DATE]);
 
   /* ---- Section 4 Availability Trend ---- */
   const availabilityTrend = useMemo(() => {

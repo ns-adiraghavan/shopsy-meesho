@@ -179,7 +179,7 @@ export default function GenZDemandSignals() {
       .filter((r) => r.Shopsy !== null || r.Meesho !== null)
       .sort((a, b) => (a.Meesho ?? 99) - (b.Meesho ?? 99))
       .slice(0, 15);
-  }, []);
+  }, [LATEST_DATE]);
 
   // Meesho win rate in top 10
   const meeshoWinRate = useMemo(() => {
@@ -189,7 +189,7 @@ export default function GenZDemandSignals() {
     const meeshoSlots = latest.filter((r) => r.platform === "Meesho").length;
     const total = latest.length;
     return total > 0 ? Math.round((meeshoSlots / total) * 100) : 0;
-  }, []);
+  }, [LATEST_DATE]);
 
   /* ---------- Section 5 — Response Gap ---------- */
 
