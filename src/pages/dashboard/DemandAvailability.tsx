@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 import { datasets } from "@/data/dataLoader";
 import {
   BarChart,
@@ -23,7 +25,7 @@ function avg(nums: number[]): number {
   return nums.reduce((a, b) => a + b, 0) / nums.length;
 }
 
-function KPISimple({ title, value, subtitle, color }: { title: string; value: string; subtitle?: string; color?: "red" | "green" | "amber" }) {
+function KPISimple({ title, value, subtitle, color, tooltip }: { title: string; value: string; subtitle?: string; color?: "red" | "green" | "amber"; tooltip?: string }) {
   const border = color === "red"
     ? "border-l-4 border-l-red-500"
     : color === "green"
@@ -34,7 +36,12 @@ function KPISimple({ title, value, subtitle, color }: { title: string; value: st
   return (
     <Card className={cn("bg-gradient-card", border)}>
       <CardHeader className="pb-1">
-        <CardTitle className="text-xs font-medium text-muted-foreground">{title}</CardTitle>
+        <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+          {title}
+          {tooltip && (
+            <TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-3 w-3 cursor-help opacity-60 hover:opacity-100" /></TooltipTrigger><TooltipContent className="max-w-xs text-xs"><p>{tooltip}</p></TooltipContent></Tooltip></TooltipProvider>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <p className="text-2xl font-bold">{value}</p>
@@ -43,7 +50,6 @@ function KPISimple({ title, value, subtitle, color }: { title: string; value: st
     </Card>
   );
 }
-
 export default function DemandAvailability() {
   const LATEST_DATE = useMemo(() => datasets.demandSignals.reduce((max, r) => r.date > max ? r.date : max, ""), []);
 
@@ -151,10 +157,10 @@ export default function DemandAvailability() {
 
       {/* Section 1 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPISimple title="Avg Demand Intensity Score" value={avgDemand.toFixed(1)} subtitle="Shopsy, latest" />
-        <KPISimple title="SKUs with High Demand (>60)" value={highDemandCount.toString()} color="green" />
-        <KPISimple title="Critical Stockouts" value={criticalStockouts.toString()} subtitle="Must-have SKUs out of stock" color="red" />
-        <KPISimple title="Total Lost Demand Proxy" value={totalLostDemand.toFixed(0)} color="amber" />
+        <KPISimple title="Avg Demand Intensity Score" value={avgDemand.toFixed(1)} subtitle="Shopsy, latest" tooltip="Composite score (0–100) measuring how strongly a SKU is being demanded based on search rank, review velocity, and price sensitivity signals" />
+        <KPISimple title="SKUs with High Demand (>60)" value={highDemandCount.toString()} color="green" tooltip="Count of Shopsy SKUs with demand intensity score above 60, where promotional investment would have measurable impact" />
+        <KPISimple title="Critical Stockouts" value={criticalStockouts.toString()} subtitle="Must-have SKUs out of stock" color="red" tooltip="Must-have SKUs (flagged as portfolio-critical) that are currently out of stock on Shopsy" />
+        <KPISimple title="Total Lost Demand Proxy" value={totalLostDemand.toFixed(0)} color="amber" tooltip="Estimated demand units lost across all Shopsy SKUs due to stockouts. Synthetic proxy — directional only" />
       </div>
 
       {/* Section 2 — Action Queue */}
