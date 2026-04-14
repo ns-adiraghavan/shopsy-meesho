@@ -11,8 +11,8 @@ import { DashboardLayout } from "./components/DashboardLayout";
 import CompetitiveOverview from "./pages/dashboard/CompetitiveOverview";
 import PricingPromoIntelligence from "./pages/dashboard/PricingPromoIntelligence";
 import AssortmentIntelligence from "./pages/dashboard/AssortmentIntelligence";
+import GenZDemandSignals from "./pages/dashboard/GenZDemandSignals";
 // TODO: create
-// import GenZDemandSignals from "./pages/dashboard/GenZDemandSignals";
 // import DemandAvailability from "./pages/dashboard/DemandAvailability";
 // import PromotionBudgetOptimizer from "./pages/dashboard/PromotionBudgetOptimizer";
 import NotFound from "./pages/NotFound";
