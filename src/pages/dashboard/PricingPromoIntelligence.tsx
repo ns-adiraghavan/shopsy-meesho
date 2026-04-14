@@ -289,6 +289,7 @@ export default function PricingPromoIntelligence() {
       </Card>
 
       {/* Section 5 — SKU Benchmark */}
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-primary/70 mb-1">SKU-Level Detail</p>
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">SKU-Level Price Benchmark</CardTitle>

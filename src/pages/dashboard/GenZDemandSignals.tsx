@@ -34,9 +34,10 @@ function scoreColor(score: number): string {
 }
 
 function scoreBadge(score: number) {
-  if (score > 85) return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Trending</Badge>;
-  if (score > 70) return <Badge className="bg-amber-500/90 hover:bg-amber-500 text-white text-[10px] px-1.5 py-0">Rising</Badge>;
-  return <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{score.toFixed(0)}</Badge>;
+  if (score >= 85) return <span className="inline-flex items-center rounded-full bg-red-50 text-red-600 border border-red-200 text-[10px] px-1.5 py-0 font-medium">🔥 Trending</span>;
+  if (score >= 70) return <span className="inline-flex items-center rounded-full bg-amber-50 text-amber-600 border border-amber-200 text-[10px] px-1.5 py-0 font-medium">↑ Rising</span>;
+  if (score >= 55) return <span className="inline-flex items-center rounded-full bg-violet-50 text-violet-600 border border-violet-200 text-[10px] px-1.5 py-0 font-medium">Emerging</span>;
+  return <span className="inline-flex items-center rounded-full bg-muted text-muted-foreground border border-border text-[10px] px-1.5 py-0 font-medium">Watching</span>;
 }
 
 function delta(val: number) {
@@ -240,6 +241,7 @@ export default function GenZDemandSignals() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Gen Z Traction Leaderboard (Meesho)</CardTitle>
+          <p className="text-xs text-muted-foreground">Signal source: Meesho · Scores reflect Gen Z keyword rank momentum + review velocity · 14-day window</p>
           <p className="text-xs text-muted-foreground">Top 20 SKUs by Gen Z traction score, latest date</p>
         </CardHeader>
         <CardContent className="overflow-x-auto">
@@ -344,6 +346,13 @@ export default function GenZDemandSignals() {
           <p className="text-xs text-muted-foreground">High Gen Z traction SKUs (Meesho) that Shopsy is NOT promoting</p>
         </CardHeader>
         <CardContent className="overflow-x-auto">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3 mb-4">
+            <span className="text-amber-500 text-lg shrink-0">⚡</span>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Shopsy is leaving Gen Z GMV on the table</p>
+              <p className="text-xs text-amber-700 mt-0.5">These SKUs have strong Gen Z pull on Meesho. Shopsy either doesn&apos;t carry them or isn&apos;t promoting them. Lowest-effort, highest-impact actions for the next campaign cycle.</p>
+            </div>
+          </div>
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border">
@@ -368,7 +377,11 @@ export default function GenZDemandSignals() {
                     {r.priceGap !== null ? `${r.priceGap > 0 ? "+" : ""}${r.priceGap.toFixed(1)}%` : "\u2014"}
                   </td>
                   <td className="py-1.5 px-2">
-                    <Badge variant={r.actionVariant} className="text-[10px] px-1.5 py-0">{r.action}</Badge>
+                    {r.action === "Quick-Add Candidate" ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 text-red-600 border border-red-200 text-[10px] px-1.5 py-0.5 font-medium">🏷️ Quick-Add Candidate</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 text-violet-600 border border-violet-200 text-[10px] px-1.5 py-0.5 font-medium">⚡ Promote Now</span>
+                    )}
                   </td>
                 </tr>
               ))}

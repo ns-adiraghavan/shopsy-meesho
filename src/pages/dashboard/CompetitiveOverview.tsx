@@ -196,6 +196,7 @@ export default function CompetitiveOverview() {
 
       {/* Section 2 -- Category Pressure Map */}
       <section>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-primary/70 mb-1">Category Intelligence</p>
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Category Pressure Map</CardTitle>

@@ -23,11 +23,11 @@ const fmt = (n: number) => n.toLocaleString("en-IN");
 function promoBadge(type: string) {
   switch (type) {
     case "Flash Sale":
-      return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{type}</Badge>;
+      return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">🔥 Flash Sale</Badge>;
     case "Coupon":
-      return <Badge className="bg-amber-500/90 hover:bg-amber-500 text-white text-[10px] px-1.5 py-0">{type}</Badge>;
+      return <Badge className="bg-amber-500/90 hover:bg-amber-500 text-white text-[10px] px-1.5 py-0">🎟️ Coupon</Badge>;
     default:
-      return <Badge className="bg-blue-500/90 hover:bg-blue-500 text-white text-[10px] px-1.5 py-0">{type}</Badge>;
+      return <Badge className="bg-blue-500/90 hover:bg-blue-500 text-white text-[10px] px-1.5 py-0">🏷️ {type}</Badge>;
   }
 }
 
@@ -226,9 +226,13 @@ export default function PromotionBudgetOptimizer() {
       <h1 className="text-lg font-semibold">Promotion Budget Optimizer</h1>
 
       {/* Section 1 — Budget Input */}
-      <Card className="border-2 border-primary/20">
+      <Card
+        className="border border-primary/20"
+        style={{ background: "linear-gradient(135deg, hsl(348 85% 58% / 0.06), hsl(280 70% 62% / 0.06))" }}
+      >
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Budget Allocation</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">Where should Shopsy spend?</CardTitle>
+          <p className="text-sm text-muted-foreground">Enter your promotion budget and we&apos;ll rank every eligible SKU by expected GMV return per rupee.</p>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-end gap-3">
@@ -242,11 +246,17 @@ export default function PromotionBudgetOptimizer() {
                 min={0}
               />
             </div>
-            <Button onClick={runAllocation} className="h-9">Allocate Budget</Button>
+            <Button
+              onClick={runAllocation}
+              className="h-9 px-6 font-semibold text-white"
+              style={{ background: "linear-gradient(to right, hsl(348 85% 58%), hsl(280 70% 62%))" }}
+            >
+              Allocate Budget
+            </Button>
           </div>
           {!allocated && (
             <p className="text-xs text-muted-foreground mt-3">
-              {eligible.length} SKUs eligible for promotion. Enter your budget to generate an allocation plan.
+              {eligible.length} Shopsy SKUs ranked by Promotion ROI Score · OOS SKUs automatically excluded
             </p>
           )}
         </CardContent>
