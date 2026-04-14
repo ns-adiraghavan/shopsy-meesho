@@ -3,46 +3,43 @@ import { useLocation } from "react-router-dom";
 import pako from "pako";
 import {
   datasets,
+  SKUMaster,
+  AssortmentRecord,
   PriceRecord,
   AvailabilityRecord,
   SearchRankRecord,
-  AssortmentRecord,
-  SKUMaster,
-  PlatformSummary,
+  ReviewRawRecord,
+  ReviewSignalsRecord,
+  GenZTractionRecord,
+  DemandSignalsRecord,
+  PromotionROIRecord,
   CompetitorEvent,
+  PlatformSummary,
 } from "@/data/dataLoader";
 
 // ─── Dataset keys ──────────────────────────────────────────────────────────────
 export type DatasetKey =
+  | "sku_master"
+  | "assortment_tracking"
   | "price_tracking"
   | "availability_tracking"
   | "search_rank_tracking"
-  | "assortment_tracking"
-  | "sku_master"
-  | "platform_summary"
-  | "competitor_events";
+  | "review_raw"
+  | "review_signals"
+  | "genz_traction"
+  | "demand_signals"
+  | "promotion_roi"
+  | "competitor_events"
+  | "platform_summary";
 
 // ─── Page → required datasets ─────────────────────────────────────────────────
 const PAGE_DATASETS: Record<string, DatasetKey[]> = {
-  "/dashboard": [
-    "sku_master",
-    "price_tracking",
-    "availability_tracking",
-    "search_rank_tracking",
-    "assortment_tracking",
-    "platform_summary",
-  ],
-  "/dashboard/pricing":      ["sku_master", "price_tracking"],
-  "/dashboard/search":       ["sku_master", "search_rank_tracking"],
-  "/dashboard/assortment":   ["sku_master", "assortment_tracking", "availability_tracking"],
-  "/dashboard/availability": ["sku_master", "availability_tracking"],
-  "/dashboard/local": [
-    "sku_master",
-    "price_tracking",
-    "availability_tracking",
-    "search_rank_tracking",
-  ],
-  "/dashboard/events": ["sku_master", "competitor_events", "platform_summary"],
+  "/dashboard":               ["sku_master", "platform_summary", "competitor_events", "price_tracking", "assortment_tracking"],
+  "/dashboard/pricing":       ["sku_master", "price_tracking"],
+  "/dashboard/genz":          ["sku_master", "genz_traction", "search_rank_tracking"],
+  "/dashboard/assortment":    ["sku_master", "assortment_tracking", "genz_traction"],
+  "/dashboard/demand":        ["sku_master", "demand_signals"],
+  "/dashboard/budget":        ["sku_master", "promotion_roi"],
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -64,16 +61,7 @@ export function useData() {
 const fetchedDatasets = new Set<DatasetKey>();
 const fetchPromises: Partial<Record<DatasetKey, Promise<void>>> = {};
 
-// ─── Pincode normalizer ───────────────────────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const normalizePincode = (rows: any[]) =>
-  rows.map((r) => (r.pincode != null ? { ...r, pincode: String(r.pincode) } : r));
-
 // ─── Local-only gzip loader ───────────────────────────────────────────────────
-// Strategy: always fetch as ArrayBuffer and decompress with pako.
-// If the dev server auto-decompresses (Content-Encoding: gzip), the buffer will
-// be plain JSON bytes — pako will throw, and we fall back to a direct text parse.
-// This is the only data source — no cloud / Supabase storage calls exist.
 async function fetchGzip(key: DatasetKey): Promise<unknown[]> {
   const url = `/data/${key}.json.gz`;
   const res = await fetch(url);
@@ -84,10 +72,8 @@ async function fetchGzip(key: DatasetKey): Promise<unknown[]> {
 
   let text: string;
   try {
-    // Primary: raw gzip bytes on disk → pako decompresses to UTF-8 string
     text = pako.inflate(bytes, { to: "string" });
   } catch {
-    // Fallback: dev-server already decoded Content-Encoding: gzip, buffer is plain JSON
     text = new TextDecoder().decode(bytes);
   }
 
@@ -104,34 +90,47 @@ function fetchAndHydrate(key: DatasetKey): Promise<void> {
     fetchPromises[key] = fetchGzip(key)
       .then((raw) => {
         switch (key) {
-          case "price_tracking":
-            datasets.priceTracking = normalizePincode(raw) as PriceRecord[];
-            break;
-          case "availability_tracking":
-            datasets.availabilityTracking = normalizePincode(raw) as AvailabilityRecord[];
-            break;
-          case "search_rank_tracking":
-            datasets.searchRankTracking = normalizePincode(raw) as SearchRankRecord[];
-            break;
-          case "assortment_tracking":
-            datasets.assortmentTracking = normalizePincode(raw) as AssortmentRecord[];
-            break;
           case "sku_master":
             datasets.skuMaster = raw as SKUMaster[];
             break;
-          case "platform_summary":
-            datasets.platformSummary = raw as PlatformSummary[];
+          case "assortment_tracking":
+            datasets.assortmentTracking = raw as AssortmentRecord[];
+            break;
+          case "price_tracking":
+            datasets.priceTracking = raw as PriceRecord[];
+            break;
+          case "availability_tracking":
+            datasets.availabilityTracking = raw as AvailabilityRecord[];
+            break;
+          case "search_rank_tracking":
+            datasets.searchRankTracking = raw as SearchRankRecord[];
+            break;
+          case "review_raw":
+            datasets.reviewRaw = raw as ReviewRawRecord[];
+            break;
+          case "review_signals":
+            datasets.reviewSignals = raw as ReviewSignalsRecord[];
+            break;
+          case "genz_traction":
+            datasets.genzTraction = raw as GenZTractionRecord[];
+            break;
+          case "demand_signals":
+            datasets.demandSignals = raw as DemandSignalsRecord[];
+            break;
+          case "promotion_roi":
+            datasets.promotionROI = raw as PromotionROIRecord[];
             break;
           case "competitor_events":
-            datasets.competitorEvents = normalizePincode(raw) as CompetitorEvent[];
+            datasets.competitorEvents = raw as CompetitorEvent[];
+            break;
+          case "platform_summary":
+            datasets.platformSummary = raw as PlatformSummary[];
             break;
         }
         fetchedDatasets.add(key);
       })
       .catch((err) => {
-        // Remove the cached promise so a retry is possible on next navigation
         delete (fetchPromises as Record<string, unknown>)[key];
-        // Re-throw so the caller can surface the error without hanging
         throw err;
       });
   }
@@ -142,15 +141,14 @@ function fetchAndHydrate(key: DatasetKey): Promise<void> {
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const [loaded, setLoaded]   = useState(false);
-  const [errors, setErrors]   = useState<string[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
   const [loadedDatasets, setLoadedDatasets] = useState<Set<DatasetKey>>(new Set(fetchedDatasets));
   const prevPathRef = useRef<string | null>(null);
 
   const loadForPage = useCallback(async (pathname: string) => {
     const required = PAGE_DATASETS[pathname] ?? [];
 
-    // Already cached — show immediately
     if (required.every((k) => fetchedDatasets.has(k))) {
       setLoaded(true);
       return;
@@ -159,7 +157,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setLoaded(false);
     setErrors([]);
 
-    // Fire all required fetches in parallel; collect any failures
     const results = await Promise.allSettled(required.map((k) => fetchAndHydrate(k)));
 
     const failed: string[] = [];
@@ -173,7 +170,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     setLoadedDatasets(new Set(fetchedDatasets));
     setErrors(failed);
-    setLoaded(true); // Always unblock — partial data is better than infinite spinner
+    setLoaded(true);
   }, []);
 
   useEffect(() => {
