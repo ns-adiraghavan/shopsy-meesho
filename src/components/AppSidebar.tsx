@@ -15,14 +15,12 @@ import { useLocation, Link } from "react-router-dom";
 import {
   LayoutDashboard,
   Tag,
-  Search,
+  Sparkles,
   Package,
   CheckCircle2,
-  MapPin,
+  Wallet,
   Moon,
   Sun,
-  Activity,
-  BookOpen,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -31,41 +29,12 @@ import logoColor from "@/assets/netscribes-logo-color.png";
 import logoWhite from "@/assets/netscribes-logo-white.png";
 
 const navItems = [
-  {
-    title: "Competitive Overview",
-    url: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Pricing & Promotions",
-    url: "/dashboard/pricing",
-    icon: Tag,
-  },
-  {
-    title: "Search & Shelf Visibility",
-    url: "/dashboard/search",
-    icon: Search,
-  },
-  {
-    title: "Assortment Intelligence",
-    url: "/dashboard/assortment",
-    icon: Package,
-  },
-  {
-    title: "Availability Intelligence",
-    url: "/dashboard/availability",
-    icon: CheckCircle2,
-  },
-  {
-    title: "Local Market Intelligence",
-    url: "/dashboard/local",
-    icon: MapPin,
-  },
-  {
-    title: "Competitive Events",
-    url: "/dashboard/events",
-    icon: Activity,
-  },
+  { title: "Competitive Overview",      url: "/dashboard",            icon: LayoutDashboard },
+  { title: "Pricing & Promotions",      url: "/dashboard/pricing",    icon: Tag },
+  { title: "Gen Z Demand Signals",      url: "/dashboard/genz",       icon: Sparkles },
+  { title: "Assortment Intelligence",   url: "/dashboard/assortment", icon: Package },
+  { title: "Demand & Availability",     url: "/dashboard/demand",     icon: CheckCircle2 },
+  { title: "Promotion Budget Optimizer", url: "/dashboard/budget",    icon: Wallet },
 ];
 
 export function AppSidebar() {
@@ -81,21 +50,12 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      {/* Logo / Brand */}
       <SidebarHeader className="border-b border-sidebar-border">
         <Link to="/" className="flex items-center gap-2 px-2 py-3 hover:opacity-80 transition-opacity">
           {collapsed ? (
-            <img
-              src={theme === "dark" ? logoWhite : logoColor}
-              alt="Netscribes"
-              className="h-6 w-6 object-contain shrink-0"
-            />
+            <img src={theme === "dark" ? logoWhite : logoColor} alt="Netscribes" className="h-6 w-6 object-contain shrink-0" />
           ) : (
-            <img
-              src={theme === "dark" ? logoWhite : logoColor}
-              alt="Netscribes"
-              className="h-7 w-auto object-contain"
-            />
+            <img src={theme === "dark" ? logoWhite : logoColor} alt="Netscribes" className="h-7 w-auto object-contain" />
           )}
         </Link>
       </SidebarHeader>
@@ -132,26 +92,11 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-2">
-        {/* Analytics Taxonomy link */}
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Analytics Taxonomy">
-              <Link
-                to="/analytics-taxonomy"
-                className={cn(
-                  "flex items-center gap-2 text-xs",
-                  location.pathname === "/analytics-taxonomy"
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    : "hover:bg-sidebar-accent/50 text-muted-foreground"
-                )}
-              >
-                <BookOpen className="h-4 w-4 shrink-0" />
-                {!collapsed && <span>Analytics Taxonomy</span>}
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-
+        {!collapsed && (
+          <div className="text-xs text-muted-foreground px-2 py-1">
+            Data: Shopsy vs Meesho | Apr 2026
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -159,15 +104,9 @@ export function AppSidebar() {
             className="w-full justify-start gap-2"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           >
-            {theme === "dark" ? (
-              <Sun className="h-4 w-4 shrink-0" />
-            ) : (
-              <Moon className="h-4 w-4 shrink-0" />
-            )}
+            {theme === "dark" ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
             {!collapsed && (
-              <span className="text-xs">
-                {theme === "dark" ? "Light Mode" : "Dark Mode"}
-              </span>
+              <span className="text-xs">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
             )}
           </Button>
         </div>
