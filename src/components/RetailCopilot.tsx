@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import {
@@ -10,14 +9,11 @@ import {
   Loader2,
   RefreshCw,
   MessageSquare,
-  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { GlobalFilters } from "@/data/dataLoader";
-import { buildDataContext, buildPageContext } from "@/hooks/useCopilotData";
 
 interface Message {
   id: string;
@@ -26,32 +22,63 @@ interface Message {
   loading?: boolean;
 }
 
-interface AutoInsight {
-  insight: string;
-  cta: string;
-}
-
 const SUGGESTED_QUESTIONS = [
-  "Which platform is most aggressive on promotions?",
-  "Why is Bangalore the most competitive city?",
-  "Which platform dominates search visibility?",
-  "Are there unusual promotional events this week?",
+  "Where is Shopsy most overpriced vs Meesho?",
+  "Which Gen Z categories is Meesho winning?",
+  "What are the top stockout risks on Shopsy?",
+  "Where should we allocate a \u20B95 lakh promo budget?",
 ];
 
 const PAGE_LABELS: Record<string, string> = {
-  "/dashboard": "Competitive Overview",
-  "/dashboard/pricing": "Pricing & Promotions",
-  "/dashboard/search": "Search & Shelf Visibility",
+  "/dashboard":            "Competitive Overview",
+  "/dashboard/pricing":    "Pricing & Promotions",
+  "/dashboard/genz":       "Gen Z Demand Signals",
   "/dashboard/assortment": "Assortment Intelligence",
-  "/dashboard/availability": "Availability Intelligence",
-  "/dashboard/local": "Local Market Intelligence",
-  "/dashboard/events": "Competitive Events",
+  "/dashboard/demand":     "Demand & Availability",
+  "/dashboard/budget":     "Promotion Budget Optimizer",
 };
 
-/** Renders markdown-style bullet lists and bold text */
+/* ------------------------------------------------------------------ */
+/*  Hardcoded response engine                                         */
+/* ------------------------------------------------------------------ */
+
+function getHardcodedResponse(userMessage: string, pageLabel: string): string {
+  const q = userMessage.toLowerCase();
+
+  if (q.includes("competitiveness") || q.includes("overall") || q.includes("score")) {
+    return "**Competitive Score**\n- Meesho: 65 vs Shopsy: 59\n- Shopsy lags on promotion intensity (15% vs 23%) and search visibility (81% vs 93%).\n- Shopsy\u2019s advantage: availability rate (84.9% vs 81.5%) and Flipkart-exclusive brands in Men\u2019s Casual Wear and Footwear.";
+  }
+  if (q.includes("price gap") || q.includes("overpriced")) {
+    return "**Price Gap Summary**\n- Shopsy is overpriced vs Meesho by +13.5% on average.\n- Worst categories: Accessories (+14%), Women\u2019s Western Wear (+12%), Beauty & Skincare (+10%).\n- Shopsy is cheaper in: Men\u2019s Casual Wear (\u22122%), Footwear (\u22123%), Innerwear (\u22121%).";
+  }
+  if (q.includes("promo") || q.includes("promotion") || q.includes("discount")) {
+    return "**Promotion Gap**\n- Meesho promo rate: 23% of SKU-days vs Shopsy: 14.8%.\n- Meesho average discount depth: 23.7% vs Shopsy: 15.4%.\n- Meesho is running Flash Sales in Accessories and Women\u2019s Western Wear \u2014 Shopsy has not responded in either category.";
+  }
+  if (q.includes("gen z") || q.includes("genz") || q.includes("trending") || q.includes("traction")) {
+    return "**Gen Z Demand Signals**\n- Top trending on Meesho: Co-ord sets, Glass Skin Routine, Y2K Dresses, Aesthetic Accessories.\n- StyleCast and Anouk score above 70 on Meesho \u2014 both are under-listed on Shopsy.\n- Shopsy wins 0 of the top-3 Gen Z keyword slots. Meesho dominates 78% of Gen Z top-10 positions.";
+  }
+  if (q.includes("assortment") || q.includes("catalogue") || q.includes("missing") || q.includes("gap")) {
+    return "**Assortment Gap**\n- Meesho lists 533 SKUs; Shopsy lists 498.\n- Meesho-leaning brands (StyleCast, SASSAFRAS, Anouk, Rangmanch) have 91% listing rate on Meesho vs 52% on Shopsy.\n- 6 high-priority gap brands identified: StyleCast, SASSAFRAS, Anouk, Rangmanch, Limelight, Trendzolook.";
+  }
+  if (q.includes("stockout") || q.includes("availability") || q.includes("oos") || q.includes("supply")) {
+    return "**Availability & Demand**\n- Shopsy overall availability: 84.9% (better than Meesho\u2019s 81.5% due to Flipkart logistics).\n- Shopsy stockout clusters: Women\u2019s Ethnic Wear (83% available = 17% OOS risk) and Beauty & Skincare (81%).\n- High demand + high stockout SKUs should be supply-fixed before any promotion is run.";
+  }
+  if (q.includes("budget") || q.includes("spend") || q.includes("allocat") || q.includes("gmv") || q.includes("roi")) {
+    return "**Promotion Budget Optimizer**\n- At \u20B95,00,000 budget: top allocation is Women\u2019s Western Wear Flash Sale (12% discount), Beauty & Skincare Coupon (10%), Accessories Flat Discount (8%).\n- Estimated GMV uplift is a synthetic benchmark \u2014 replace with Shopsy\u2019s actual conversion data for production use.\n- Filter out OOS SKUs before any allocation \u2014 never promote what you can\u2019t fulfil.";
+  }
+  if (q.includes("explain") || q.includes("this page")) {
+    return `**${pageLabel}**\nThis page provides competitive intelligence for the Shopsy vs Meesho dashboard. Key areas:\n- Price gap analysis and promotion tracking\n- Gen Z demand signals from Meesho\n- Assortment gap identification\n- Budget allocation recommendations\n\nTry asking about specific topics like price gaps, Gen Z trends, or stockout risks.`;
+  }
+
+  return `**${pageLabel}**\nI can answer questions about Shopsy vs Meesho competitive positioning. Try asking about: price gaps, promotion strategy, Gen Z demand signals, assortment gaps, stockouts, or the budget optimizer.`;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Markdown renderer                                                 */
+/* ------------------------------------------------------------------ */
+
 function formatMessage(content: string) {
   const lines = content.split("\n").filter((l, i, arr) => {
-    // Collapse more than one consecutive blank line
     if (l.trim() === "" && arr[i - 1]?.trim() === "") return false;
     return true;
   });
@@ -61,8 +88,6 @@ function formatMessage(content: string) {
       {lines.map((line, i) => {
         const trimmed = line.trim();
         if (!trimmed) return <div key={i} className="h-1" />;
-
-        // Bold section headers like **Fact**
         if (trimmed.startsWith("**") && trimmed.endsWith("**")) {
           return (
             <p key={i} className="text-[11px] font-bold text-primary/80 uppercase tracking-wider mt-2 mb-0.5 first:mt-0">
@@ -70,24 +95,16 @@ function formatMessage(content: string) {
             </p>
           );
         }
-
-        // Bullet lines starting with - or •
-        if (trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
+        if (trimmed.startsWith("- ") || trimmed.startsWith("\u2022 ")) {
           const text = trimmed.slice(2);
           return (
             <div key={i} className="flex gap-1.5 items-start">
-              <span className="text-primary/60 mt-[3px] shrink-0 text-[10px]">▸</span>
+              <span className="text-primary/60 mt-[3px] shrink-0 text-[10px]">{"\u25B8"}</span>
               <span className="text-[12.5px] leading-snug">{renderInline(text)}</span>
             </div>
           );
         }
-
-        // Regular text
-        return (
-          <p key={i} className="text-[12.5px] leading-snug">
-            {renderInline(trimmed)}
-          </p>
-        );
+        return <p key={i} className="text-[12.5px] leading-snug">{renderInline(trimmed)}</p>;
       })}
     </div>
   );
@@ -97,191 +114,65 @@ function renderInline(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, j) =>
     part.startsWith("**") && part.endsWith("**") ? (
-      <strong key={j} className="font-semibold text-foreground">
-        {part.slice(2, -2)}
-      </strong>
+      <strong key={j} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>
     ) : (
       <span key={j}>{part}</span>
     )
   );
 }
 
-interface RetailCopilotProps {
-  filters: GlobalFilters;
-}
+/* ------------------------------------------------------------------ */
+/*  Component                                                         */
+/* ------------------------------------------------------------------ */
 
-export function RetailCopilot({ filters }: RetailCopilotProps) {
+export function RetailCopilot() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(true);
-  const [autoInsights, setAutoInsights] = useState<AutoInsight[]>([]);
-  const [insightsLoading, setInsightsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const currentPage = PAGE_LABELS[location.pathname] ?? "Dashboard";
-  const pageContext = buildPageContext(location.pathname);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Focus input when opened
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 100);
   }, [open]);
 
-  // Fetch auto-insights when panel opens (only if no messages yet)
-  useEffect(() => {
-    if (!open || messages.length > 0 || autoInsights.length > 0 || insightsLoading) return;
-
-    const fetchInsights = async () => {
-      setInsightsLoading(true);
-      try {
-        const dataContext = buildDataContext(filters);
-        const filterPayload: Record<string, string> = {
-          city: filters.city,
-          platform: filters.platform,
-          category: filters.category,
-          pincode: filters.pincode,
-        };
-
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        if (!supabaseUrl || !supabaseKey) return;
-
-        const res = await fetch(`${supabaseUrl}/functions/v1/retail-copilot`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${supabaseKey}`,
-            apikey: supabaseKey,
-          },
-          body: JSON.stringify({
-            messages: [],
-            dataContext,
-            filters: filterPayload,
-            pageContext,
-            mode: "auto_insights",
-          }),
-        });
-
-        if (res.ok) {
-          const json = await res.json();
-          if (Array.isArray(json.insights) && json.insights.length > 0) {
-            setAutoInsights(json.insights);
-          }
-        }
-      } catch {
-        // Silently fail — insights are optional
-      } finally {
-        setInsightsLoading(false);
-      }
-    };
-
-    fetchInsights();
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const sendMessage = useCallback(
-    async (text: string) => {
+    (text: string) => {
       if (!text.trim() || loading) return;
       setSuggestionsOpen(false);
 
       const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text.trim() };
-      const thinkingMsg: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: "",
-        loading: true,
-      };
+      const thinkingMsg: Message = { id: crypto.randomUUID(), role: "assistant", content: "", loading: true };
 
       setMessages((prev) => [...prev, userMsg, thinkingMsg]);
       setInput("");
       setLoading(true);
 
-      try {
-        const dataContext = buildDataContext(filters);
-        const history = [...messages, userMsg].map((m) => ({
-          role: m.role,
-          content: m.content,
-        }));
-
-        const filterPayload: Record<string, string> = {
-          city: filters.city,
-          platform: filters.platform,
-          category: filters.category,
-          pincode: filters.pincode,
-        };
-
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-        if (!supabaseUrl || !supabaseKey) {
-          throw new Error("Missing Supabase configuration.");
-        }
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 45000);
-
-        let res: Response;
-        try {
-          res = await fetch(`${supabaseUrl}/functions/v1/retail-copilot`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${supabaseKey}`,
-              apikey: supabaseKey,
-            },
-            body: JSON.stringify({
-              messages: history,
-              dataContext,
-              filters: filterPayload,
-              pageContext,
-              mode: "chat",
-            }),
-            signal: controller.signal,
-          });
-        } finally {
-          clearTimeout(timeoutId);
-        }
-
-        if (!res.ok) {
-          const errText = await res.text().catch(() => `HTTP ${res.status}`);
-          throw new Error(`[${res.status}] ${errText}`);
-        }
-
-        const json = await res.json();
-        const reply = json?.reply ?? "Unable to generate a response. Please try again.";
+      // Simulate brief delay
+      setTimeout(() => {
+        const reply = getHardcodedResponse(text.trim(), currentPage);
         setMessages((prev) =>
           prev.map((m) => (m.loading ? { ...m, content: reply, loading: false } : m))
         );
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
-        console.error("[RetailCopilot] fetch error:", message);
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.loading
-              ? { ...m, content: `Unable to reach the AI. Error: ${message}`, loading: false }
-              : m
-          )
-        );
-      } finally {
         setLoading(false);
-      }
+      }, 600);
     },
-    [filters, messages, pageContext, loading]
+    [loading, currentPage]
   );
 
   const explainPage = useCallback(() => {
-    sendMessage(
-      `Explain this dashboard page "${currentPage}" and give me 3 key strategic insights based on the current data.`
-    );
+    sendMessage(`Explain this dashboard page "${currentPage}" and give me 3 key strategic insights based on the current data.`);
   }, [currentPage, sendMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -293,7 +184,6 @@ export function RetailCopilot({ filters }: RetailCopilotProps) {
 
   const clearChat = () => {
     setMessages([]);
-    setAutoInsights([]);
     setSuggestionsOpen(true);
   };
 
@@ -327,7 +217,7 @@ export function RetailCopilot({ filters }: RetailCopilotProps) {
         )}
       >
         <div className="flex flex-col h-full m-4 rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
-          {/* ── Header ── */}
+          {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card shrink-0">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
               <Bot className="h-4 w-4 text-primary" />
@@ -338,12 +228,6 @@ export function RetailCopilot({ filters }: RetailCopilotProps) {
               </p>
               <p className="text-[11px] text-muted-foreground truncate">
                 {currentPage}
-                {filters.city !== "All Cities" && (
-                  <span className="text-primary/80"> · {filters.city}</span>
-                )}
-                {filters.platform !== "All Platforms" && (
-                  <span className="text-primary/80"> · {filters.platform}</span>
-                )}
               </p>
             </div>
             <div className="flex items-center gap-1">
@@ -365,7 +249,7 @@ export function RetailCopilot({ filters }: RetailCopilotProps) {
             </div>
           </div>
 
-          {/* ── Explain This Page button ── */}
+          {/* Explain This Page */}
           <div className="px-4 py-2 border-b border-border/60 shrink-0 bg-muted/20">
             <button
               onClick={explainPage}
@@ -381,12 +265,11 @@ export function RetailCopilot({ filters }: RetailCopilotProps) {
             </button>
           </div>
 
-          {/* ── Messages ── */}
+          {/* Messages */}
           <div className="flex-1 overflow-hidden">
             <ScrollArea className="h-full">
               <div ref={scrollRef} className="flex flex-col gap-3 px-4 py-3">
 
-                {/* Welcome state */}
                 {showWelcome && (
                   <div className="flex flex-col items-center gap-2 py-4 text-center">
                     <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
@@ -401,52 +284,10 @@ export function RetailCopilot({ filters }: RetailCopilotProps) {
                   </div>
                 )}
 
-                {/* ── Auto-insight triggers ── */}
-                {showWelcome && (
-                  <div className="flex flex-col gap-2">
-                    {insightsLoading ? (
-                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-muted/40 border border-border/50">
-                        <Zap className="h-3.5 w-3.5 text-primary/50 shrink-0" />
-                        <span className="text-[11.5px] text-muted-foreground">Generating live insights…</span>
-                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-auto" />
-                      </div>
-                    ) : (
-                      autoInsights.map((ins, idx) => (
-                        <div
-                          key={idx}
-                          className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-col gap-2"
-                        >
-                          <div className="flex gap-2 items-start">
-                            <Zap className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                            <p className="text-[12px] font-medium text-foreground leading-snug">
-                              {ins.insight}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => sendMessage(ins.cta)}
-                            disabled={loading}
-                            className={cn(
-                              "self-start text-[11px] text-primary font-medium px-2.5 py-1 rounded-md",
-                              "bg-primary/10 hover:bg-primary/20 transition-colors border border-primary/20",
-                              loading && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            {ins.cta} →
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {/* Chat messages */}
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
-                    className={cn(
-                      "flex",
-                      msg.role === "user" ? "justify-end" : "justify-start"
-                    )}
+                    className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}
                   >
                     {msg.role === "assistant" && (
                       <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 mr-2 mt-0.5 shrink-0">
@@ -464,7 +305,7 @@ export function RetailCopilot({ filters }: RetailCopilotProps) {
                       {msg.loading ? (
                         <div className="flex items-center gap-2">
                           <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                          <span className="text-muted-foreground text-xs">Analyzing data…</span>
+                          <span className="text-muted-foreground text-xs">Analyzing data\u2026</span>
                         </div>
                       ) : msg.role === "assistant" ? (
                         formatMessage(msg.content)
@@ -478,7 +319,7 @@ export function RetailCopilot({ filters }: RetailCopilotProps) {
             </ScrollArea>
           </div>
 
-          {/* ── Suggested Questions ── */}
+          {/* Suggested Questions */}
           {suggestionsOpen && showWelcome && (
             <div className="shrink-0 border-t border-border/60 bg-muted/10">
               <button
@@ -507,7 +348,7 @@ export function RetailCopilot({ filters }: RetailCopilotProps) {
             </div>
           )}
 
-          {/* ── Input ── */}
+          {/* Input */}
           <div className="shrink-0 px-3 py-3 border-t border-border bg-card">
             <div className="flex items-end gap-2">
               <Textarea
@@ -515,7 +356,7 @@ export function RetailCopilot({ filters }: RetailCopilotProps) {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about pricing, promotions, availability…"
+                placeholder="Ask about pricing, promotions, availability\u2026"
                 rows={2}
                 className="flex-1 resize-none text-xs rounded-lg min-h-[44px] max-h-[120px] py-2.5 leading-relaxed border-border/70"
                 disabled={loading}
@@ -526,11 +367,7 @@ export function RetailCopilot({ filters }: RetailCopilotProps) {
                 disabled={!input.trim() || loading}
                 className="h-9 w-9 rounded-lg shrink-0 mb-0.5"
               >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
             <p className="text-[10px] text-muted-foreground/60 text-center mt-1.5">
