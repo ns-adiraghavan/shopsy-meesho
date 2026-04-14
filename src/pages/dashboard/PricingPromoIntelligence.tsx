@@ -24,7 +24,6 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const LATEST_DATE = "2026-04-14";
 const PAGE_SIZE = 50;
 
 /* ------------------------------------------------------------------ */
