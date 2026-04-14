@@ -74,12 +74,12 @@ const Login = () => {
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-3 leading-tight">
-            Quick-Commerce{" "}
-            <span className="text-primary">Intelligence Platform</span>
+            Shopsy vs Meesho{" "}
+            <span className="text-primary">Competitive Intelligence</span>
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Real-time competitive intelligence across pricing, availability,
-            search, and assortment.
+            Track pricing gaps, Gen Z demand signals, assortment gaps, and promotion
+            opportunities across India's leading social commerce platforms.
           </p>
         </div>
 
