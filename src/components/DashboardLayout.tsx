@@ -4,6 +4,7 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useData } from "@/contexts/DataContext";
+import { RetailCopilot } from "@/components/RetailCopilot";
 
 export function DashboardLayout() {
   const { loaded: _loaded } = useData();
@@ -43,6 +44,7 @@ export function DashboardLayout() {
           </main>
         </div>
       </div>
+      <RetailCopilot />
     </SidebarProvider>
   );
 }
