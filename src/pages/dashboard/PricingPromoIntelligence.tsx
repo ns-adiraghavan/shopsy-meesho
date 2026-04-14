@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -157,10 +159,10 @@ export default function PricingPromoIntelligence() {
 
       {/* Section 1 — KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPISimple title="SKUs Where Shopsy Overpriced" value={overpricedCount.toString()} subtitle={`of ${shopsyRows.length} SKUs`} color="red" />
-        <KPISimple title="Avg Price Gap (Shopsy vs Meesho)" value={`${avgGap >= 0 ? "+" : ""}${avgGap.toFixed(1)}%`} color={avgGap > 0 ? "red" : "green"} />
-        <KPISimple title="Meesho Active Promo Rate" value={`${meeshoPromoRate.toFixed(1)}%`} color="amber" />
-        <KPISimple title="Shopsy Active Promo Rate" value={`${shopsyPromoRate.toFixed(1)}%`} />
+        <KPISimple title="SKUs Where Shopsy Overpriced" value={overpricedCount.toString()} subtitle={`of ${shopsyRows.length} SKUs`} color="red" tooltip="Number of SKUs where Shopsy's sale price is higher than Meesho's equivalent, as of the latest date" />
+        <KPISimple title="Avg Price Gap (Shopsy vs Meesho)" value={`${avgGap >= 0 ? "+" : ""}${avgGap.toFixed(1)}%`} color={avgGap > 0 ? "red" : "green"} tooltip="Average percentage difference between Shopsy and Meesho sale prices. Positive = Shopsy is more expensive" />
+        <KPISimple title="Meesho Active Promo Rate" value={`${meeshoPromoRate.toFixed(1)}%`} color="amber" tooltip="Percentage of Meesho SKUs currently running an active promotion (coupon, flash sale, or markdown)" />
+        <KPISimple title="Shopsy Active Promo Rate" value={`${shopsyPromoRate.toFixed(1)}%`} tooltip="Percentage of Shopsy SKUs currently running an active promotion" />
       </div>
 
       {/* Section 2 — Category Price Gap */}
@@ -336,7 +338,7 @@ export default function PricingPromoIntelligence() {
 /*  Simple KPI card (local)                                           */
 /* ------------------------------------------------------------------ */
 
-function KPISimple({ title, value, subtitle, color }: { title: string; value: string; subtitle?: string; color?: "red" | "green" | "amber" }) {
+function KPISimple({ title, value, subtitle, color, tooltip }: { title: string; value: string; subtitle?: string; color?: "red" | "green" | "amber"; tooltip?: string }) {
   const border = color === "red"
     ? "border-l-4 border-l-red-500"
     : color === "green"
@@ -347,7 +349,12 @@ function KPISimple({ title, value, subtitle, color }: { title: string; value: st
   return (
     <Card className={cn("bg-gradient-card", border)}>
       <CardHeader className="pb-1">
-        <CardTitle className="text-xs font-medium text-muted-foreground">{title}</CardTitle>
+        <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+          {title}
+          {tooltip && (
+            <TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-3 w-3 cursor-help opacity-60 hover:opacity-100" /></TooltipTrigger><TooltipContent className="max-w-xs text-xs"><p>{tooltip}</p></TooltipContent></Tooltip></TooltipProvider>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <p className="text-2xl font-bold">{value}</p>

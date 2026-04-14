@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 import { datasets } from "@/data/dataLoader";
 import {
   BarChart,
@@ -48,7 +50,7 @@ function delta(val: number) {
 /*  KPI card                                                          */
 /* ------------------------------------------------------------------ */
 
-function KPISimple({ title, value, subtitle, color }: { title: string; value: string; subtitle?: string; color?: "red" | "green" | "amber" }) {
+function KPISimple({ title, value, subtitle, color, tooltip }: { title: string; value: string; subtitle?: string; color?: "red" | "green" | "amber"; tooltip?: string }) {
   const border = color === "red"
     ? "border-l-4 border-l-red-500"
     : color === "green"
@@ -59,7 +61,12 @@ function KPISimple({ title, value, subtitle, color }: { title: string; value: st
   return (
     <Card className={cn("bg-gradient-card", border)}>
       <CardHeader className="pb-1">
-        <CardTitle className="text-xs font-medium text-muted-foreground">{title}</CardTitle>
+        <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+          {title}
+          {tooltip && (
+            <TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-3 w-3 cursor-help opacity-60 hover:opacity-100" /></TooltipTrigger><TooltipContent className="max-w-xs text-xs"><p>{tooltip}</p></TooltipContent></Tooltip></TooltipProvider>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <p className="text-2xl font-bold">{value}</p>
@@ -68,7 +75,6 @@ function KPISimple({ title, value, subtitle, color }: { title: string; value: st
     </Card>
   );
 }
-
 /* ------------------------------------------------------------------ */
 /*  Page                                                              */
 /* ------------------------------------------------------------------ */
@@ -231,10 +237,10 @@ export default function GenZDemandSignals() {
 
       {/* Section 1 — KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPISimple title="Trending SKUs (score > 70)" value={trendingCount.toString()} subtitle="on Meesho" color="amber" />
-        <KPISimple title="Hot SKUs (score > 85)" value={hotCount.toString()} subtitle="on Meesho" color="red" />
-        <KPISimple title="Avg Gen Z Traction Score" value={avgScore.toFixed(1)} subtitle="Meesho latest" />
-        <KPISimple title="Gen Z Keywords Tracked" value={genzKeywordCount.toString()} color="green" />
+        <KPISimple title="Trending SKUs (score > 70)" value={trendingCount.toString()} subtitle="on Meesho" color="amber" tooltip="SKUs on Meesho with a Gen Z Traction Score above 70, indicating rising demand among Gen Z shoppers" />
+        <KPISimple title="Hot SKUs (score > 85)" value={hotCount.toString()} subtitle="on Meesho" color="red" tooltip="SKUs on Meesho with a Gen Z Traction Score above 85 — highest urgency for Shopsy to respond" />
+        <KPISimple title="Avg Gen Z Traction Score" value={avgScore.toFixed(1)} subtitle="Meesho latest" tooltip="Composite score (0–100) combining Gen Z keyword rank momentum, review velocity, and rating delta on Meesho" />
+        <KPISimple title="Gen Z Keywords Tracked" value={genzKeywordCount.toString()} color="green" tooltip="Distinct Gen Z-tagged search keywords monitored across both platforms" />
       </div>
 
       {/* Section 2 — Leaderboard */}
