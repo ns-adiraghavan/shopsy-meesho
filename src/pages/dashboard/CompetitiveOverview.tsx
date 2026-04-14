@@ -286,8 +286,6 @@ export default function CompetitiveOverview() {
     </div>
   );
 }
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
