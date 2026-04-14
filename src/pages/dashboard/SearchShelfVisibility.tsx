@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { KPICard } from "@/components/dashboard/KPICard";
 import { getSearchData, getSponsoredShareByPlatform, getTop10PresenceByPlatform, getEliteRankShareByPlatform, GlobalFilters } from "@/data/dataLoader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

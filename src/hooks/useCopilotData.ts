@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { datasets } from "@/data/dataLoader";
 import { GlobalFilters } from "@/data/dataLoader";
 

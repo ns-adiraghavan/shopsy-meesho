@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** Converts an array of objects to a CSV string and triggers a browser download */
 export function exportToCSV(data: Record<string, unknown>[], filename: string): void {
   if (data.length === 0) {

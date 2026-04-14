@@ -10,13 +10,11 @@ import Login from "./pages/Login";
 import { DashboardLayout } from "./components/DashboardLayout";
 import CompetitiveOverview from "./pages/dashboard/CompetitiveOverview";
 import PricingPromoIntelligence from "./pages/dashboard/PricingPromoIntelligence";
-import SearchShelfVisibility from "./pages/dashboard/SearchShelfVisibility";
 import AssortmentIntelligence from "./pages/dashboard/AssortmentIntelligence";
-import AvailabilityIntelligence from "./pages/dashboard/AvailabilityIntelligence";
-import LocalMarketIntelligence from "./pages/dashboard/LocalMarketIntelligence";
-import CompetitiveEvents from "./pages/dashboard/CompetitiveEvents";
-import AnalyticsTaxonomy from "./pages/AnalyticsTaxonomy";
-import ManageDatasets from "./pages/ManageDatasets";
+// TODO: create
+// import GenZDemandSignals from "./pages/dashboard/GenZDemandSignals";
+// import DemandAvailability from "./pages/dashboard/DemandAvailability";
+// import PromotionBudgetOptimizer from "./pages/dashboard/PromotionBudgetOptimizer";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,14 +33,11 @@ const App = () => (
               <Route path="/dashboard" element={<DashboardLayout />}>
                 <Route index element={<CompetitiveOverview />} />
                 <Route path="pricing" element={<PricingPromoIntelligence />} />
-                <Route path="search" element={<SearchShelfVisibility />} />
+                <Route path="genz" element={<div>Gen Z — coming in next prompt</div>} />
                 <Route path="assortment" element={<AssortmentIntelligence />} />
-                <Route path="availability" element={<AvailabilityIntelligence />} />
-                <Route path="local" element={<LocalMarketIntelligence />} />
-                <Route path="events" element={<CompetitiveEvents />} />
+                <Route path="demand" element={<div>Demand — coming in next prompt</div>} />
+                <Route path="budget" element={<div>Budget — coming in next prompt</div>} />
               </Route>
-              <Route path="/analytics-taxonomy" element={<AnalyticsTaxonomy />} />
-              <Route path="/manage-datasets" element={<ManageDatasets />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

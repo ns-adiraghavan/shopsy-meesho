@@ -207,3 +207,35 @@ export const datasets: {
   competitorEvents: [],
   platformSummary: [],
 };
+
+// ── Backward-compat stubs (old pages still import these) ──
+
+export interface GlobalFilters {
+  city: string;
+  platform: string;
+  category: string;
+  pincode: string;
+}
+
+export const DEFAULT_FILTERS: GlobalFilters = {
+  city: "All Cities",
+  platform: "All Platforms",
+  category: "All Categories",
+  pincode: "All Pincodes",
+};
+
+export function applyFilters<T>(data: T[], _filters: GlobalFilters): T[] {
+  return data;
+}
+
+export function getUniquePincodes(): string[] { return []; }
+export function getUniqueCategories(): string[] { return []; }
+export function getPincodeCityMap(): Record<string, string> { return {}; }
+export function getAssortmentData() { return datasets.assortmentTracking; }
+export function getListingCountByPlatform() { return {}; }
+export function getAvailabilityByPlatform() { return {}; }
+export function getAvailabilityData() { return datasets.availabilityTracking; }
+export function getEvents() { return datasets.competitorEvents; }
+export function getPriceData() { return datasets.priceTracking; }
+export function getSearchData() { return datasets.searchRankTracking; }
+

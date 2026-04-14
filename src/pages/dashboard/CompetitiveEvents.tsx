@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import {

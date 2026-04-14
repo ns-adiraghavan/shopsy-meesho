@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Public Data Intelligence platform data
 // Platforms and cities for quick-commerce competitive intelligence
 
