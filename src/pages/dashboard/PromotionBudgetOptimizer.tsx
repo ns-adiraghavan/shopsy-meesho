@@ -12,6 +12,12 @@ import {
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
   Legend,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  LabelList,
 } from "recharts";
 
 /* ------------------------------------------------------------------ */
@@ -330,6 +336,102 @@ export default function PromotionBudgetOptimizer() {
           <SKUTable rows={leaderboard} showDisclaimer />
         </CardContent>
       </Card>
+
+      {/* Section A — Category Allocation Breakdown */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">GMV Uplift Potential by Category</CardTitle>
+            <p className="text-xs text-muted-foreground">Across all promotion-eligible SKUs, ranked by estimated impact</p>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const catMap: Record<string, number> = {};
+              eligible.forEach((r) => { catMap[r.category] = (catMap[r.category] ?? 0) + r.estimated_gmv_uplift; });
+              const catData = Object.entries(catMap)
+                .map(([category, uplift]) => ({ category, uplift: Math.round(uplift) }))
+                .sort((a, b) => b.uplift - a.uplift);
+              return catData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={Math.max(280, catData.length * 36)}>
+                  <BarChart data={catData} layout="vertical" margin={{ left: 140, right: 60, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" tickFormatter={(v: number) => `₹${(v / 1000).toFixed(0)}K`} fontSize={11} />
+                    <YAxis type="category" dataKey="category" width={130} fontSize={10} tick={{ fill: "hsl(var(--foreground))" }} />
+                    <RechartsTooltip formatter={(v: number) => [`₹${v.toLocaleString("en-IN")}`, "GMV Uplift"]} />
+                    <Bar dataKey="uplift" radius={[0, 4, 4, 0]}>
+                      {catData.map((_, i) => (
+                        <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
+                      ))}
+                      <LabelList dataKey="uplift" position="right" fontSize={10} formatter={(v: number) => `₹${v.toLocaleString("en-IN")}`} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <p className="text-sm text-muted-foreground text-center py-6">No eligible SKUs.</p>;
+            })()}
+          </CardContent>
+        </Card>
+
+        {/* Section B — Promo Type Distribution */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Recommended Promo Mix</CardTitle>
+            <p className="text-xs text-muted-foreground">Distribution of promo types across ROI-ranked SKUs</p>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            {(() => {
+              const typeMap: Record<string, number> = {};
+              eligible.forEach((r) => { typeMap[r.recommended_promo_type] = (typeMap[r.recommended_promo_type] ?? 0) + 1; });
+              const typeData = Object.entries(typeMap)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a, b) => b.value - a.value);
+              return typeData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie
+                      data={typeData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={85}
+                      paddingAngle={2}
+                      label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      fontSize={10}
+                    >
+                      {typeData.map((_, i) => (
+                        <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip formatter={(v: number) => [v, "SKUs"]} />
+                    <Legend verticalAlign="bottom" height={36} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : <p className="text-sm text-muted-foreground text-center py-6">No eligible SKUs.</p>;
+            })()}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Section C — Brand Concentration Alert */}
+      {(() => {
+        const top20 = leaderboard.slice(0, 20);
+        const brandMap: Record<string, number> = {};
+        top20.forEach((r) => { brandMap[r.brand] = (brandMap[r.brand] ?? 0) + 1; });
+        const dominant = Object.entries(brandMap).find(([, count]) => count / top20.length > 0.3);
+        if (dominant) {
+          return (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+              <p className="text-sm font-semibold text-amber-800">⚠️ {dominant[0]} accounts for {dominant[1]} of the top 20 promotion slots — consider diversifying budget across brands to reduce dependency.</p>
+            </div>
+          );
+        }
+        return (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <p className="text-sm font-semibold text-emerald-800">✓ Budget is well-distributed across brands in the top 20.</p>
+          </div>
+        );
+      })()}
     </div>
   );
 }
