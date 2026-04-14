@@ -33,7 +33,7 @@ const App = () => (
               <Route path="/dashboard" element={<DashboardLayout />}>
                 <Route index element={<CompetitiveOverview />} />
                 <Route path="pricing" element={<PricingPromoIntelligence />} />
-                <Route path="genz" element={<div>Gen Z — coming in next prompt</div>} />
+                <Route path="genz" element={<GenZDemandSignals />} />
                 <Route path="assortment" element={<AssortmentIntelligence />} />
                 <Route path="demand" element={<div>Demand — coming in next prompt</div>} />
                 <Route path="budget" element={<div>Budget — coming in next prompt</div>} />
