@@ -86,10 +86,10 @@ interface PressureRow {
 const pressureData: PressureRow[] = [
   { category: "Women's Western Wear",   priceGap: { value: "+12%", color: "red" },   promoGap: { value: "Higher", color: "red" }, assortmentGap: { value: "Behind", color: "red" } },
   { category: "Women's Ethnic Wear",    priceGap: { value: "+8%",  color: "red" },   promoGap: { value: "Higher", color: "red" }, assortmentGap: { value: "Behind", color: "red" } },
-  { category: "Men's Casual Wear",      priceGap: { value: "\u22122%",  color: "green" }, promoGap: { value: "Higher", color: "red" }, assortmentGap: { value: "Ahead",  color: "green" } },
+  { category: "Men's Casual Wear",      priceGap: { value: "-2%",  color: "green" }, promoGap: { value: "Higher", color: "red" }, assortmentGap: { value: "Ahead",  color: "green" } },
   { category: "Kidswear",               priceGap: { value: "+5%",  color: "red" },   promoGap: { value: "Higher", color: "red" }, assortmentGap: { value: "Even",   color: "amber" } },
-  { category: "Innerwear & Loungewear", priceGap: { value: "\u22121%",  color: "green" }, promoGap: { value: "Higher", color: "red" }, assortmentGap: { value: "Ahead",  color: "green" } },
-  { category: "Footwear",               priceGap: { value: "\u22123%",  color: "green" }, promoGap: { value: "Higher", color: "red" }, assortmentGap: { value: "Ahead",  color: "green" } },
+  { category: "Innerwear & Loungewear", priceGap: { value: "-1%",  color: "green" }, promoGap: { value: "Higher", color: "red" }, assortmentGap: { value: "Ahead",  color: "green" } },
+  { category: "Footwear",               priceGap: { value: "-3%",  color: "green" }, promoGap: { value: "Higher", color: "red" }, assortmentGap: { value: "Ahead",  color: "green" } },
   { category: "Beauty & Skincare",      priceGap: { value: "+10%", color: "red" },   promoGap: { value: "Higher", color: "red" }, assortmentGap: { value: "Behind", color: "red" } },
   { category: "Accessories",            priceGap: { value: "+14%", color: "red" },   promoGap: { value: "Higher", color: "red" }, assortmentGap: { value: "Behind", color: "red" } },
   { category: "Home & Kitchen",         priceGap: { value: "+6%",  color: "red" },   promoGap: { value: "Higher", color: "red" }, assortmentGap: { value: "Even",   color: "amber" } },
@@ -159,12 +159,12 @@ export default function CompetitiveOverview() {
             shopsyValue="59"
             meeshoValue="65"
             shopsyHighlight="red"
-            subtitle="Composite 0\u2013100"
+            subtitle="Composite 0–100"
           />
           <DualKPICard
             title="Avg Price Gap"
             shopsyValue="+13.5%"
-            meeshoValue="\u221213%"
+            meeshoValue="-13%"
             shopsyHighlight="red"
             meeshoHighlight="green"
             tooltip="Positive = this platform is more expensive vs competitor"
