@@ -24,7 +24,6 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const LATEST_DATE = "2026-04-14";
 const PAGE_SIZE = 50;
 
 /* ------------------------------------------------------------------ */
@@ -60,9 +59,11 @@ export default function PricingPromoIntelligence() {
 
   /* ---------- derived data ---------- */
 
+  const LATEST_DATE = useMemo(() => datasets.priceTracking.reduce((max, r) => r.date > max ? r.date : max, ""), []);
+
   const latestRows = useMemo(
     () => datasets.priceTracking.filter((r) => r.date === LATEST_DATE),
-    []
+    [LATEST_DATE]
   );
 
   const shopsyRows = useMemo(() => latestRows.filter((r) => r.platform === "Shopsy"), [latestRows]);

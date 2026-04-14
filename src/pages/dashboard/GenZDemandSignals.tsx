@@ -16,8 +16,6 @@ import {
   Legend,
 } from "recharts";
 
-const LATEST_DATE = "2026-04-14";
-
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
@@ -78,9 +76,11 @@ function KPISimple({ title, value, subtitle, color }: { title: string; value: st
 export default function GenZDemandSignals() {
   /* ---------- base data ---------- */
 
+  const LATEST_DATE = useMemo(() => datasets.genzTraction.reduce((max, r) => r.date > max ? r.date : max, ""), []);
+
   const meeshoGenz = useMemo(
     () => datasets.genzTraction.filter((r) => r.platform === "Meesho" && r.date === LATEST_DATE),
-    []
+    [LATEST_DATE]
   );
 
   const skuNameMap = useMemo(() => {
@@ -103,7 +103,7 @@ export default function GenZDemandSignals() {
       .filter((r) => r.platform === "Shopsy" && r.date === LATEST_DATE)
       .forEach((r) => { m[r.sku_id] = r.promotion_flag; });
     return m;
-  }, []);
+  }, [LATEST_DATE]);
 
   const shopsyGapMap = useMemo(() => {
     const m: Record<string, number> = {};
@@ -111,7 +111,7 @@ export default function GenZDemandSignals() {
       .filter((r) => r.platform === "Shopsy" && r.date === LATEST_DATE)
       .forEach((r) => { m[r.sku_id] = r.price_gap_pct; });
     return m;
-  }, []);
+  }, [LATEST_DATE]);
 
   /* ---------- Section 1 — KPIs ---------- */
 
@@ -179,7 +179,7 @@ export default function GenZDemandSignals() {
       .filter((r) => r.Shopsy !== null || r.Meesho !== null)
       .sort((a, b) => (a.Meesho ?? 99) - (b.Meesho ?? 99))
       .slice(0, 15);
-  }, []);
+  }, [LATEST_DATE]);
 
   // Meesho win rate in top 10
   const meeshoWinRate = useMemo(() => {
@@ -189,7 +189,7 @@ export default function GenZDemandSignals() {
     const meeshoSlots = latest.filter((r) => r.platform === "Meesho").length;
     const total = latest.length;
     return total > 0 ? Math.round((meeshoSlots / total) * 100) : 0;
-  }, []);
+  }, [LATEST_DATE]);
 
   /* ---------- Section 5 — Response Gap ---------- */
 

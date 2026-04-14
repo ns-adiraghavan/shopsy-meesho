@@ -16,7 +16,7 @@ import {
   Line,
 } from "recharts";
 
-const LATEST_DATE = "2026-04-14";
+
 
 function avg(nums: number[]): number {
   if (nums.length === 0) return 0;
@@ -45,6 +45,8 @@ function KPISimple({ title, value, subtitle, color }: { title: string; value: st
 }
 
 export default function DemandAvailability() {
+  const LATEST_DATE = useMemo(() => datasets.demandSignals.reduce((max, r) => r.date > max ? r.date : max, ""), []);
+
   const skuNameMap = useMemo(() => {
     const m: Record<string, string> = {};
     datasets.skuMaster.forEach((s) => { m[s.sku_id] = s.normalized_name; });
@@ -53,7 +55,7 @@ export default function DemandAvailability() {
 
   const shopsyLatest = useMemo(
     () => datasets.demandSignals.filter((r) => r.platform === "Shopsy" && r.date === LATEST_DATE),
-    []
+    [LATEST_DATE]
   );
 
   /* ---- Section 1 KPIs ---- */
@@ -107,7 +109,7 @@ export default function DemandAvailability() {
         Meesho: +(avg(v.meesho) * 100).toFixed(1),
       }))
       .sort((a, b) => b.Shopsy - a.Shopsy);
-  }, []);
+  }, [LATEST_DATE]);
 
   /* ---- Section 4 Availability Trend ---- */
   const availabilityTrend = useMemo(() => {

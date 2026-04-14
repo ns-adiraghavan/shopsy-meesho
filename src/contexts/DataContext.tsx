@@ -35,10 +35,10 @@ export type DatasetKey =
 // ─── Page → required datasets ─────────────────────────────────────────────────
 const PAGE_DATASETS: Record<string, DatasetKey[]> = {
   "/dashboard":               ["sku_master", "platform_summary", "competitor_events", "price_tracking", "assortment_tracking"],
-  "/dashboard/pricing":       ["sku_master", "price_tracking"],
-  "/dashboard/genz":          ["sku_master", "genz_traction", "search_rank_tracking"],
+  "/dashboard/pricing":       ["sku_master", "price_tracking", "assortment_tracking"],
+  "/dashboard/genz":          ["sku_master", "genz_traction", "search_rank_tracking", "price_tracking", "assortment_tracking"],
   "/dashboard/assortment":    ["sku_master", "assortment_tracking", "genz_traction"],
-  "/dashboard/demand":        ["sku_master", "demand_signals"],
+  "/dashboard/demand":        ["sku_master", "demand_signals", "price_tracking"],
   "/dashboard/budget":        ["sku_master", "promotion_roi"],
 };
 
