@@ -36,8 +36,8 @@ const highlightColor = (h?: string) => {
 function DualKPICard({ title, shopsyValue, meeshoValue, shopsyHighlight = "none", meeshoHighlight = "none", tooltip, subtitle }: DualKPIProps) {
   return (
     <TooltipProvider>
-      <Card className="bg-gradient-card">
-        <CardHeader className="pb-2">
+      <Card className="bg-gradient-card p-0">
+        <CardHeader className="pb-1 pt-3 px-3">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
             {title}
             {tooltip && (
@@ -53,8 +53,8 @@ function DualKPICard({ title, shopsyValue, meeshoValue, shopsyHighlight = "none"
           </CardTitle>
           {subtitle && <p className="text-[10px] text-muted-foreground/70">{subtitle}</p>}
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3">
+        <CardContent className="px-3 pb-3 pt-0">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Shopsy</p>
               <p className={cn("text-xl font-bold", highlightColor(shopsyHighlight))}>{shopsyValue}</p>
