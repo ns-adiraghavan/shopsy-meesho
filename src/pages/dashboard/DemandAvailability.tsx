@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HelpCircle } from "lucide-react";
 import { datasets } from "@/data/dataLoader";
+import { chartTooltipProps } from "@/lib/chartStyles";
 import {
   BarChart,
   Bar,
@@ -17,8 +18,6 @@ import {
   LineChart,
   Line,
 } from "recharts";
-
-
 
 function avg(nums: number[]): number {
   if (nums.length === 0) return 0;
@@ -44,12 +43,13 @@ function KPISimple({ title, value, subtitle, color, tooltip }: { title: string; 
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-bold">{value}</p>
+        <p className="text-2xl font-bold tabular-nums">{value}</p>
         {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
       </CardContent>
     </Card>
   );
 }
+
 export default function DemandAvailability() {
   const LATEST_DATE = useMemo(() => datasets.demandSignals.reduce((max, r) => r.date > max ? r.date : max, ""), []);
 
@@ -179,8 +179,8 @@ export default function DemandAvailability() {
                   <p className="text-[10px] text-muted-foreground">{r.category}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="font-medium">{r.demand.toFixed(0)}</p>
-                  <p className="text-[10px] text-red-500">+{r.gap.toFixed(1)}%</p>
+                  <p className="font-medium tabular-nums">{r.demand.toFixed(1)}</p>
+                  <p className="text-[10px] text-red-500 dark:text-red-400 tabular-nums">+{r.gap.toFixed(1)}%</p>
                 </div>
               </div>
             ))}
@@ -201,8 +201,8 @@ export default function DemandAvailability() {
                   <p className="text-[10px] text-muted-foreground">{r.category}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="font-medium">{r.demand.toFixed(0)}</p>
-                  <p className="text-[10px] text-amber-500">{(r.stockout * 100).toFixed(0)}% OOS</p>
+                  <p className="font-medium tabular-nums">{r.demand.toFixed(1)}</p>
+                  <p className="text-[10px] text-amber-500 dark:text-amber-400 tabular-nums">{(r.stockout * 100).toFixed(1)}% OOS</p>
                 </div>
               </div>
             ))}
@@ -223,8 +223,8 @@ export default function DemandAvailability() {
                   <p className="text-[10px] text-muted-foreground">{r.category}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="font-medium text-muted-foreground">{r.demand.toFixed(0)}</p>
-                  <p className="text-[10px]">{r.discount.toFixed(1)}% off</p>
+                  <p className="font-medium text-muted-foreground tabular-nums">{r.demand.toFixed(1)}</p>
+                  <p className="text-[10px] tabular-nums">{r.discount.toFixed(1)}% off</p>
                 </div>
               </div>
             ))}
@@ -245,7 +245,7 @@ export default function DemandAvailability() {
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" tickFormatter={(v: number) => `${v}%`} fontSize={11} />
                 <YAxis type="category" dataKey="category" width={140} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
-                <RechartsTooltip formatter={(v: number) => [`${v}%`, ""]} />
+                <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [`${v}%`, ""]} />
                 <Legend verticalAlign="top" height={28} />
                 <Bar dataKey="Shopsy" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]} />
                 <Bar dataKey="Meesho" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} />
@@ -268,9 +268,9 @@ export default function DemandAvailability() {
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={availabilityTrend} margin={{ left: 10, right: 20, top: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" fontSize={10} tick={{ fill: "hsl(var(--foreground))" }} />
+                <XAxis dataKey="date" fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
                 <YAxis tickFormatter={(v: number) => `${v}%`} fontSize={11} domain={[60, 100]} />
-                <RechartsTooltip formatter={(v: number) => [`${v}%`, ""]} />
+                <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [`${v}%`, ""]} />
                 <Legend verticalAlign="top" height={28} />
                 <Line type="monotone" dataKey="Shopsy" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={{ r: 3 }} />
                 <Line type="monotone" dataKey="Meesho" stroke="hsl(38, 92%, 50%)" strokeWidth={2} dot={{ r: 3 }} />
@@ -306,12 +306,12 @@ export default function DemandAvailability() {
                   <td className="py-1.5 px-2">{r.brand}</td>
                   <td className="py-1.5 px-2">{r.category}</td>
                   <td className="py-1.5 px-2">
-                    <Badge variant={r.stockout > 0.5 ? "destructive" : "secondary"} className="text-[10px] px-1.5 py-0">
-                      {(r.stockout * 100).toFixed(0)}%
+                    <Badge variant={r.stockout > 0.5 ? "destructive" : "secondary"} className="text-[10px] px-1.5 py-0 tabular-nums">
+                      {(r.stockout * 100).toFixed(1)}%
                     </Badge>
                   </td>
-                  <td className="py-1.5 px-2 font-medium">{r.demand.toFixed(0)}</td>
-                  <td className="py-1.5 px-2 font-medium text-red-600 dark:text-red-400">{r.lost.toFixed(1)}</td>
+                  <td className="py-1.5 px-2 font-medium tabular-nums">{r.demand.toFixed(1)}</td>
+                  <td className="py-1.5 px-2 font-medium text-red-600 dark:text-red-400 tabular-nums">{r.lost.toFixed(1)}</td>
                 </tr>
               ))}
             </tbody>
