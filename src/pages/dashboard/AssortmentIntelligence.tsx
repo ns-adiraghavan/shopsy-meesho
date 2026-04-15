@@ -153,33 +153,6 @@ export default function AssortmentIntelligence() {
     return rows.sort((a, b) => b.genzScore - a.genzScore);
   }, [meeshoListedSet, shopsyListedSet, skuNameMap, genzScoreMap]);
 
-  /* ---------- Section 4 — Quick-Add Candidates ---------- */
-
-  const quickAddCandidates = useMemo(() => {
-    const rows: Array<{
-      sku_id: string; name: string; brand: string; category: string;
-      meeshoDiscount: number; shopsyDiscount: number; genzScore: number;
-    }> = [];
-    meeshoListedSet.forEach((id) => {
-      if (!shopsyListedSet.has(id)) return;
-      const mp = meeshoPromoMap[id];
-      const sp = shopsyPromoMap[id];
-      if (!mp || mp.flag !== 1) return;
-      if (sp && sp.flag === 1) return;
-      const master = datasets.skuMaster.find((s) => s.sku_id === id);
-      rows.push({
-        sku_id: id,
-        name: skuNameMap[id] || id,
-        brand: master?.brand || "",
-        category: master?.category || "",
-        meeshoDiscount: mp.discount,
-        shopsyDiscount: sp?.discount ?? 0,
-        genzScore: genzScoreMap[id] ?? 0,
-      });
-    });
-    return rows.sort((a, b) => b.genzScore - a.genzScore);
-  }, [meeshoListedSet, shopsyListedSet, meeshoPromoMap, shopsyPromoMap, skuNameMap, genzScoreMap]);
-
   /* ---------- Section 5 — Category Depth ---------- */
 
   const categoryDepthData = useMemo(() => {
@@ -242,6 +215,7 @@ export default function AssortmentIntelligence() {
           <p className="text-xs text-muted-foreground">SKUs listed on Meesho but missing from Shopsy, ranked by Gen Z traction</p>
         </CardHeader>
         <CardContent className="overflow-x-auto">
+          <div className="max-h-[480px] overflow-y-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border">
@@ -271,46 +245,11 @@ export default function AssortmentIntelligence() {
               ))}
             </tbody>
           </table>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Section 4 — Quick-Add */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Quick-Add Candidates</CardTitle>
-          <p className="text-xs text-muted-foreground">Shopsy carries these but isn&apos;t promoting &mdash; Meesho is</p>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border">
-                {["Product", "Brand", "Category", "Meesho Discount %", "Shopsy Discount %", "Gen Z Score", "Action"].map((h) => (
-                  <th key={h} className="text-left py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {quickAddCandidates.length === 0 ? (
-                <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">No quick-add candidates found.</td></tr>
-              ) : quickAddCandidates.slice(0, 30).map((r, i) => (
-                <tr key={`${r.sku_id}-${i}`} className="border-b border-border/40 hover:bg-muted/30">
-                  <td className="py-1.5 px-2 max-w-[180px] truncate font-medium">{r.name}</td>
-                  <td className="py-1.5 px-2">{r.brand}</td>
-                  <td className="py-1.5 px-2">{r.category}</td>
-                  <td className="py-1.5 px-2 tabular-nums">{r.meeshoDiscount.toFixed(1)}%</td>
-                  <td className="py-1.5 px-2 tabular-nums">{r.shopsyDiscount.toFixed(1)}%</td>
-                  <td className="py-1.5 px-2 font-medium tabular-nums">{r.genzScore > 0 ? r.genzScore.toFixed(1) : "\u2014"}</td>
-                  <td className="py-1.5 px-2">
-                    <Badge variant="default" className="text-[10px] px-1.5 py-0">Promote on Shopsy</Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
-
-      {/* Section 5 — Category Depth */}
+      {/* Section 4 — Category Depth */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Category Assortment Depth</CardTitle>
