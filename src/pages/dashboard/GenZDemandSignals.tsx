@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { datasets } from "@/data/dataLoader";
+import { chartTooltipProps } from "@/lib/chartStyles";
 import {
   BarChart,
   Bar,
@@ -35,16 +36,16 @@ function scoreColor(score: number): string {
 }
 
 function scoreBadge(score: number) {
-  if (score >= 85) return <span className="inline-flex items-center rounded-full bg-red-50 text-red-600 border border-red-200 text-[10px] px-1.5 py-0 font-medium">🔥 Trending</span>;
-  if (score >= 70) return <span className="inline-flex items-center rounded-full bg-amber-50 text-amber-600 border border-amber-200 text-[10px] px-1.5 py-0 font-medium">↑ Rising</span>;
-  if (score >= 55) return <span className="inline-flex items-center rounded-full bg-violet-50 text-violet-600 border border-violet-200 text-[10px] px-1.5 py-0 font-medium">Emerging</span>;
+  if (score >= 85) return <span className="inline-flex items-center rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 text-[10px] px-1.5 py-0 font-medium">🔥 Trending</span>;
+  if (score >= 70) return <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 text-[10px] px-1.5 py-0 font-medium">↑ Rising</span>;
+  if (score >= 55) return <span className="inline-flex items-center rounded-full bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800 text-[10px] px-1.5 py-0 font-medium">Emerging</span>;
   return <span className="inline-flex items-center rounded-full bg-muted text-muted-foreground border border-border text-[10px] px-1.5 py-0 font-medium">Watching</span>;
 }
 
 function delta(val: number) {
-  if (val > 0) return <span className="text-emerald-600 dark:text-emerald-400">+{val.toFixed(1)}</span>;
-  if (val < 0) return <span className="text-red-600 dark:text-red-400">{val.toFixed(1)}</span>;
-  return <span className="text-muted-foreground">0</span>;
+  if (val > 0) return <span className="text-emerald-600 dark:text-emerald-400 tabular-nums">+{val.toFixed(1)}</span>;
+  if (val < 0) return <span className="text-red-600 dark:text-red-400 tabular-nums">{val.toFixed(1)}</span>;
+  return <span className="text-muted-foreground tabular-nums">0.0</span>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -70,7 +71,7 @@ function KPISimple({ title, value, subtitle, color, tooltip }: { title: string; 
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-bold">{value}</p>
+        <p className="text-2xl font-bold tabular-nums">{value}</p>
         {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
       </CardContent>
     </Card>
@@ -277,12 +278,12 @@ export default function GenZDemandSignals() {
             <tbody>
               {leaderboard.map((r) => (
                 <tr key={r.sku_id} className="border-b border-border/40 hover:bg-muted/30">
-                  <td className="py-1.5 px-2 text-muted-foreground">{r.rank}</td>
+                  <td className="py-1.5 px-2 text-muted-foreground tabular-nums">{r.rank}</td>
                   <td className="py-1.5 px-2 max-w-[180px] truncate font-medium">{r.name}</td>
                   <td className="py-1.5 px-2">{r.brand}</td>
                   <td className="py-1.5 px-2">{r.category}</td>
                   <td className="py-1.5 px-2">{scoreBadge(r.score)}</td>
-                  <td className="py-1.5 px-2">{(r.keywordCoverage * 100).toFixed(0)}%</td>
+                  <td className="py-1.5 px-2 tabular-nums">{(r.keywordCoverage * 100).toFixed(1)}%</td>
                   <td className="py-1.5 px-2">{delta(r.reviewDelta)}</td>
                   <td className="py-1.5 px-2">{delta(r.ratingDelta)}</td>
                   <td className="py-1.5 px-2 text-center">
@@ -313,7 +314,7 @@ export default function GenZDemandSignals() {
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" domain={[0, 100]} tickFormatter={(v: number) => `${v}`} fontSize={11} />
                 <YAxis type="category" dataKey="category" width={140} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
-                <RechartsTooltip formatter={(v: number) => [v, "Avg Score"]} />
+                <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [v.toFixed(1), "Avg Score"]} />
                 <Bar dataKey="score" radius={[0, 4, 4, 0]}>
                   {categoryScoreData.map((entry, i) => (
                     <Cell key={i} fill={scoreColor(entry.score)} />
@@ -347,8 +348,8 @@ export default function GenZDemandSignals() {
               <BarChart data={keywordComparison} layout="vertical" margin={{ left: 140, right: 30, top: 5, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" fontSize={11} reversed />
-                <YAxis type="category" dataKey="keyword" width={130} fontSize={10} tick={{ fill: "hsl(var(--foreground))" }} />
-                <RechartsTooltip />
+                <YAxis type="category" dataKey="keyword" width={130} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
+                <RechartsTooltip {...chartTooltipProps} />
                 <Legend verticalAlign="top" height={28} />
                 <Bar dataKey="Shopsy" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]} />
                 <Bar dataKey="Meesho" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} />
@@ -367,11 +368,11 @@ export default function GenZDemandSignals() {
           <p className="text-xs text-muted-foreground">High Gen Z traction SKUs (Meesho) that Shopsy is NOT promoting</p>
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3 mb-4">
+          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 flex items-start gap-3 mb-4">
             <span className="text-amber-500 text-lg shrink-0">⚡</span>
             <div>
-              <p className="text-sm font-semibold text-amber-800">Shopsy is leaving Gen Z GMV on the table</p>
-              <p className="text-xs text-amber-700 mt-0.5">These SKUs have strong Gen Z pull on Meesho. Shopsy either doesn&apos;t carry them or isn&apos;t promoting them. Lowest-effort, highest-impact actions for the next campaign cycle.</p>
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Shopsy is leaving Gen Z GMV on the table</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">These SKUs have strong Gen Z pull on Meesho. Shopsy either doesn&apos;t carry them or isn&apos;t promoting them. Lowest-effort, highest-impact actions for the next campaign cycle.</p>
             </div>
           </div>
           <table className="w-full text-xs">
@@ -391,7 +392,7 @@ export default function GenZDemandSignals() {
                   <td className="py-1.5 px-2">{r.brand}</td>
                   <td className="py-1.5 px-2">{r.category}</td>
                   <td className="py-1.5 px-2">{scoreBadge(r.score)}</td>
-                  <td className={cn("py-1.5 px-2 font-medium",
+                  <td className={cn("py-1.5 px-2 font-medium tabular-nums",
                     r.priceGap !== null && r.priceGap > 5 ? "text-red-600 dark:text-red-400" :
                     r.priceGap !== null && r.priceGap < -1 ? "text-emerald-600 dark:text-emerald-400" : ""
                   )}>
@@ -399,9 +400,9 @@ export default function GenZDemandSignals() {
                   </td>
                   <td className="py-1.5 px-2">
                     {r.action === "Quick-Add Candidate" ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 text-red-600 border border-red-200 text-[10px] px-1.5 py-0.5 font-medium">🏷️ Quick-Add Candidate</span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 text-[10px] px-1.5 py-0.5 font-medium">🏷️ Quick-Add Candidate</span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 text-violet-600 border border-violet-200 text-[10px] px-1.5 py-0.5 font-medium">⚡ Promote Now</span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800 text-[10px] px-1.5 py-0.5 font-medium">⚡ Promote Now</span>
                     )}
                   </td>
                 </tr>

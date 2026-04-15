@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { datasets } from "@/data/dataLoader";
+import { chartTooltipProps } from "@/lib/chartStyles";
 import {
   BarChart,
   Bar,
@@ -177,7 +178,7 @@ export default function PricingPromoIntelligence() {
               <CartesianGrid strokeDasharray="3 3" horizontal={false} />
               <XAxis type="number" tickFormatter={(v: number) => `${v}%`} fontSize={11} />
               <YAxis type="category" dataKey="category" width={130} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
-              <RechartsTooltip formatter={(v: number) => [`${v}%`, "Avg Gap"]} />
+              <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [`${v}%`, "Avg Gap"]} />
               <Bar dataKey="gap" radius={[0, 4, 4, 0]}>
                 {categoryGapData.map((entry, i) => (
                   <Cell key={i} fill={gapColor(entry.gap)} />
@@ -202,7 +203,8 @@ export default function PricingPromoIntelligence() {
                 <BarChart data={promoByCategory.meesho} layout="vertical" margin={{ left: 130, right: 30, top: 5, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" tickFormatter={(v: number) => `${v}%`} fontSize={11} />
-                  <YAxis type="category" dataKey="category" width={120} fontSize={10} tick={{ fill: "hsl(var(--foreground))" }} />
+                  <YAxis type="category" dataKey="category" width={120} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
+                  <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [`${v}%`, "Promo Rate"]} />
                   <Bar dataKey="rate" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]}>
                     <LabelList dataKey="rate" position="right" fontSize={10} formatter={(v: number) => `${v}%`} />
                   </Bar>
@@ -215,7 +217,8 @@ export default function PricingPromoIntelligence() {
                 <BarChart data={promoByCategory.shopsy} layout="vertical" margin={{ left: 130, right: 30, top: 5, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" tickFormatter={(v: number) => `${v}%`} fontSize={11} />
-                  <YAxis type="category" dataKey="category" width={120} fontSize={10} tick={{ fill: "hsl(var(--foreground))" }} />
+                  <YAxis type="category" dataKey="category" width={120} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
+                  <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [`${v}%`, "Promo Rate"]} />
                   <Bar dataKey="rate" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]}>
                     <LabelList dataKey="rate" position="right" fontSize={10} formatter={(v: number) => `${v}%`} />
                   </Bar>
@@ -263,15 +266,15 @@ export default function PricingPromoIntelligence() {
                 <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">No active promotions found.</td></tr>
               ) : pagedPromos.map((r, i) => (
                 <tr key={`${r.sku_id}-${r.platform}-${i}`} className="border-b border-border/40 hover:bg-muted/30">
-                  <td className="py-1.5 px-2 font-mono">{r.sku_id}</td>
+                  <td className="py-1.5 px-2 font-mono text-xs tabular-nums">{r.sku_id}</td>
                   <td className="py-1.5 px-2">{r.category}</td>
                   <td className="py-1.5 px-2">{r.brand}</td>
                   <td className="py-1.5 px-2">
                     <Badge variant={r.platform === "Shopsy" ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">{r.platform}</Badge>
                   </td>
                   <td className="py-1.5 px-2">{r.promotion_type || "\u2014"}</td>
-                  <td className="py-1.5 px-2">{r.discount_percent.toFixed(1)}%</td>
-                  <td className={cn("py-1.5 px-2 font-medium", r.price_gap_pct > 5 ? "text-red-600 dark:text-red-400" : r.price_gap_pct < -1 ? "text-emerald-600 dark:text-emerald-400" : "")}>
+                  <td className="py-1.5 px-2 tabular-nums">{r.discount_percent.toFixed(1)}%</td>
+                  <td className={cn("py-1.5 px-2 font-medium tabular-nums", r.price_gap_pct > 5 ? "text-red-600 dark:text-red-400" : r.price_gap_pct < -1 ? "text-emerald-600 dark:text-emerald-400" : "")}>
                     {r.price_gap_pct > 0 ? "+" : ""}{r.price_gap_pct.toFixed(1)}%
                   </td>
                 </tr>
@@ -311,12 +314,12 @@ export default function PricingPromoIntelligence() {
                 const action = actionLabel(r.gap);
                 return (
                   <tr key={`${r.sku_id}-${i}`} className="border-b border-border/40 hover:bg-muted/30">
-                    <td className="py-1.5 px-2 font-mono">{r.sku_id}</td>
+                    <td className="py-1.5 px-2 font-mono text-xs tabular-nums">{r.sku_id}</td>
                     <td className="py-1.5 px-2 max-w-[200px] truncate">{r.name}</td>
                     <td className="py-1.5 px-2">{r.category}</td>
-                    <td className="py-1.5 px-2">{"\u20B9"}{r.shopsyPrice.toFixed(0)}</td>
-                    <td className="py-1.5 px-2">{r.meeshoPrice !== null ? `\u20B9${r.meeshoPrice.toFixed(0)}` : "\u2014"}</td>
-                    <td className={cn("py-1.5 px-2 font-medium", r.gap > 5 ? "text-red-600 dark:text-red-400" : r.gap < -1 ? "text-emerald-600 dark:text-emerald-400" : "")}>
+                    <td className="py-1.5 px-2 tabular-nums">{"\u20B9"}{r.shopsyPrice.toFixed(0)}</td>
+                    <td className="py-1.5 px-2 tabular-nums">{r.meeshoPrice !== null ? `\u20B9${r.meeshoPrice.toFixed(0)}` : "\u2014"}</td>
+                    <td className={cn("py-1.5 px-2 font-medium tabular-nums", r.gap > 5 ? "text-red-600 dark:text-red-400" : r.gap < -1 ? "text-emerald-600 dark:text-emerald-400" : "")}>
                       {r.gap > 0 ? "+" : ""}{r.gap.toFixed(1)}%
                     </td>
                     <td className="py-1.5 px-2">
@@ -356,7 +359,7 @@ function KPISimple({ title, value, subtitle, color, tooltip }: { title: string; 
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-bold">{value}</p>
+        <p className="text-2xl font-bold tabular-nums">{value}</p>
         {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
       </CardContent>
     </Card>

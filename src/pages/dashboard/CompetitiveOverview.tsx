@@ -38,7 +38,7 @@ function DualKPICard({ title, shopsyValue, meeshoValue, shopsyHighlight = "none"
     <TooltipProvider>
       <Card className="bg-gradient-card p-0">
         <CardHeader className="pb-1 pt-3 px-3">
-          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             {title}
             {tooltip && (
               <Tooltip>
@@ -57,11 +57,11 @@ function DualKPICard({ title, shopsyValue, meeshoValue, shopsyHighlight = "none"
           <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Shopsy</p>
-              <p className={cn("text-xl font-bold", highlightColor(shopsyHighlight))}>{shopsyValue}</p>
+              <p className={cn("text-xl font-bold tabular-nums", highlightColor(shopsyHighlight))}>{shopsyValue}</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Meesho</p>
-              <p className={cn("text-xl font-bold", highlightColor(meeshoHighlight))}>{meeshoValue}</p>
+              <p className={cn("text-xl font-bold tabular-nums", highlightColor(meeshoHighlight))}>{meeshoValue}</p>
             </div>
           </div>
         </CardContent>
@@ -149,7 +149,7 @@ export default function CompetitiveOverview() {
   }, []);
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-[1400px] mx-auto">
+    <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Section 1 -- KPI Bar */}
       <section>
         <h1 className="text-lg font-semibold mb-2">Competitive Overview</h1>
@@ -164,7 +164,7 @@ export default function CompetitiveOverview() {
           <DualKPICard
             title="Avg Price Gap"
             shopsyValue="+13.5%"
-            meeshoValue="-13%"
+            meeshoValue="-13.0%"
             shopsyHighlight="red"
             meeshoHighlight="green"
             tooltip="Positive = this platform is more expensive vs competitor"
@@ -172,7 +172,7 @@ export default function CompetitiveOverview() {
           <DualKPICard
             title="Promo Rate"
             shopsyValue="14.8%"
-            meeshoValue="23%"
+            meeshoValue="23.0%"
             meeshoHighlight="amber"
           />
           <DualKPICard
@@ -198,7 +198,7 @@ export default function CompetitiveOverview() {
       <section>
         <p className="text-[11px] font-semibold uppercase tracking-widest text-primary/70 mb-1">Category Intelligence</p>
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-2">
             <CardTitle className="text-base">Category Pressure Map</CardTitle>
             <p className="text-xs text-muted-foreground">
               Red = Shopsy worse &middot; Green = Shopsy better &middot; Amber = neutral
@@ -244,7 +244,7 @@ export default function CompetitiveOverview() {
       {/* Section 3 -- Competitor Event Feed */}
       <section>
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-2">
             <CardTitle className="text-base">Competitor Event Feed</CardTitle>
             <p className="text-xs text-muted-foreground">
               Recent competitive events sorted by severity

@@ -4,7 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 import { datasets, type PromotionROIRecord } from "@/data/dataLoader";
+import { chartTooltipProps } from "@/lib/chartStyles";
 import {
   PieChart,
   Pie,
@@ -38,13 +41,13 @@ function promoBadge(type: string) {
 }
 
 function genzBadge(score: number) {
-  if (score > 85) return <span className="text-red-600 dark:text-red-400 font-medium">{score.toFixed(0)}</span>;
-  if (score > 70) return <span className="text-amber-600 dark:text-amber-400 font-medium">{score.toFixed(0)}</span>;
-  if (score > 0) return <span>{score.toFixed(0)}</span>;
+  if (score > 85) return <span className="text-red-600 dark:text-red-400 font-medium tabular-nums">{score.toFixed(1)}</span>;
+  if (score > 70) return <span className="text-amber-600 dark:text-amber-400 font-medium tabular-nums">{score.toFixed(1)}</span>;
+  if (score > 0) return <span className="tabular-nums">{score.toFixed(1)}</span>;
   return <span className="text-muted-foreground">{"\u2014"}</span>;
 }
 
-function KPISimple({ title, value, subtitle, color }: { title: string; value: string; subtitle?: string; color?: "red" | "green" | "amber" }) {
+function KPISimple({ title, value, subtitle, color, tooltip }: { title: string; value: string; subtitle?: string; color?: "red" | "green" | "amber"; tooltip?: string }) {
   const border = color === "red"
     ? "border-l-4 border-l-red-500"
     : color === "green"
@@ -55,10 +58,15 @@ function KPISimple({ title, value, subtitle, color }: { title: string; value: st
   return (
     <Card className={cn("bg-gradient-card", border)}>
       <CardHeader className="pb-1">
-        <CardTitle className="text-xs font-medium text-muted-foreground">{title}</CardTitle>
+        <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+          {title}
+          {tooltip && (
+            <TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-3 w-3 cursor-help opacity-60 hover:opacity-100" /></TooltipTrigger><TooltipContent className="max-w-xs text-xs"><p>{tooltip}</p></TooltipContent></Tooltip></TooltipProvider>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-bold">{value}</p>
+        <p className="text-2xl font-bold tabular-nums">{value}</p>
         {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
       </CardContent>
     </Card>
@@ -124,20 +132,20 @@ function SKUTable({ rows, showDisclaimer }: { rows: RowData[]; showDisclaimer?: 
             <tr><td colSpan={12} className="py-6 text-center text-muted-foreground">No SKUs to display.</td></tr>
           ) : rows.map((r) => (
             <tr key={r.rank} className="border-b border-border/40 hover:bg-muted/30">
-              <td className="py-1.5 px-1.5 text-muted-foreground">{r.rank}</td>
+              <td className="py-1.5 px-1.5 text-muted-foreground tabular-nums">{r.rank}</td>
               <td className="py-1.5 px-1.5 max-w-[160px] truncate font-medium">{r.name}</td>
               <td className="py-1.5 px-1.5">{r.brand}</td>
               <td className="py-1.5 px-1.5">{r.category}</td>
               <td className="py-1.5 px-1.5">{promoBadge(r.promoType)}</td>
-              <td className="py-1.5 px-1.5">{r.discount.toFixed(0)}%</td>
-              <td className="py-1.5 px-1.5">{"\u20B9"}{r.shopsyPrice.toFixed(0)}</td>
-              <td className="py-1.5 px-1.5">{"\u20B9"}{r.meeshoPrice.toFixed(0)}</td>
-              <td className={cn("py-1.5 px-1.5 font-medium", r.gapPct > 5 ? "text-red-600 dark:text-red-400" : r.gapPct < -1 ? "text-emerald-600 dark:text-emerald-400" : "")}>
+              <td className="py-1.5 px-1.5 tabular-nums">{r.discount.toFixed(1)}%</td>
+              <td className="py-1.5 px-1.5 tabular-nums">{"\u20B9"}{r.shopsyPrice.toFixed(0)}</td>
+              <td className="py-1.5 px-1.5 tabular-nums">{"\u20B9"}{r.meeshoPrice.toFixed(0)}</td>
+              <td className={cn("py-1.5 px-1.5 font-medium tabular-nums", r.gapPct > 5 ? "text-red-600 dark:text-red-400" : r.gapPct < -1 ? "text-emerald-600 dark:text-emerald-400" : "")}>
                 {r.gapPct > 0 ? "+" : ""}{r.gapPct.toFixed(1)}%
               </td>
               <td className="py-1.5 px-1.5">{genzBadge(r.genzScore)}</td>
-              <td className="py-1.5 px-1.5">{r.demandScore.toFixed(0)}</td>
-              <td className="py-1.5 px-1.5">{"\u20B9"}{fmt(Math.round(r.gmvUplift))}</td>
+              <td className="py-1.5 px-1.5 tabular-nums">{r.demandScore.toFixed(1)}</td>
+              <td className="py-1.5 px-1.5 tabular-nums">{"\u20B9"}{fmt(Math.round(r.gmvUplift))}</td>
             </tr>
           ))}
         </tbody>
@@ -189,7 +197,7 @@ export default function PromotionBudgetOptimizer() {
     for (let i = 0; i < eligible.length; i++) {
       const r = eligible[i];
       const cost = (r.sale_price * r.recommended_discount_depth / 100) * 10;
-      if (cumulative + cost > budget) continue; // skip if single SKU exceeds remaining
+      if (cumulative + cost > budget) continue;
       cumulative += cost;
       result.push(buildRow(r, result.length + 1, skuNameMap));
       if (cumulative >= budget) break;
@@ -214,7 +222,6 @@ export default function PromotionBudgetOptimizer() {
   const categoryBreakdown = useMemo(() => {
     if (!allocated) return [];
     const map: Record<string, number> = {};
-    // Rebuild cost per allocated SKU
     let idx = 0;
     for (const r of eligible) {
       if (idx >= (allocated?.length ?? 0)) break;
@@ -271,10 +278,10 @@ export default function PromotionBudgetOptimizer() {
       {/* Section 3 — Summary Cards (after allocation) */}
       {summaryCards && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KPISimple title="SKUs Allocated" value={summaryCards.count.toString()} color="green" />
-          <KPISimple title="Est. GMV Uplift" value={`\u20B9${fmt(Math.round(summaryCards.totalGMV))}`} subtitle="Synthetic benchmark" color="amber" />
-          <KPISimple title="Budget Utilisation" value={`${summaryCards.utilisation.toFixed(1)}%`} />
-          <KPISimple title="Avg ROI Score" value={summaryCards.avgROI.toFixed(1)} />
+          <KPISimple title="SKUs Allocated" value={summaryCards.count.toString()} color="green" tooltip="Number of SKUs that fit within the specified promotion budget" />
+          <KPISimple title="Est. GMV Uplift" value={`\u20B9${fmt(Math.round(summaryCards.totalGMV))}`} subtitle="Synthetic benchmark" color="amber" tooltip="Total estimated GMV uplift across all allocated SKUs. Synthetic — directional only" />
+          <KPISimple title="Budget Utilisation" value={`${summaryCards.utilisation.toFixed(1)}%`} tooltip="Percentage of the total promotion budget consumed by allocated SKUs" />
+          <KPISimple title="Avg ROI Score" value={summaryCards.avgROI.toFixed(1)} tooltip="Average Promotion ROI Score across allocated SKUs (higher = better expected return)" />
         </div>
       )}
 
@@ -318,7 +325,7 @@ export default function PromotionBudgetOptimizer() {
                     <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
                   ))}
                 </Pie>
-                <RechartsTooltip formatter={(v: number) => [`\u20B9${fmt(v)}`, "Est. Cost"]} />
+                <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [`\u20B9${fmt(v)}`, "Est. Cost"]} />
                 <Legend verticalAlign="bottom" height={36} />
               </PieChart>
             </ResponsiveContainer>
@@ -356,8 +363,8 @@ export default function PromotionBudgetOptimizer() {
                   <BarChart data={catData} layout="vertical" margin={{ left: 140, right: 60, top: 5, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                     <XAxis type="number" tickFormatter={(v: number) => `₹${(v / 1000).toFixed(0)}K`} fontSize={11} />
-                    <YAxis type="category" dataKey="category" width={130} fontSize={10} tick={{ fill: "hsl(var(--foreground))" }} />
-                    <RechartsTooltip formatter={(v: number) => [`₹${v.toLocaleString("en-IN")}`, "GMV Uplift"]} />
+                    <YAxis type="category" dataKey="category" width={130} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
+                    <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [`₹${v.toLocaleString("en-IN")}`, "GMV Uplift"]} />
                     <Bar dataKey="uplift" radius={[0, 4, 4, 0]}>
                       {catData.map((_, i) => (
                         <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
@@ -403,7 +410,7 @@ export default function PromotionBudgetOptimizer() {
                         <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
                       ))}
                     </Pie>
-                    <RechartsTooltip formatter={(v: number) => [v, "SKUs"]} />
+                    <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [v, "SKUs"]} />
                     <Legend verticalAlign="bottom" height={36} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -421,14 +428,14 @@ export default function PromotionBudgetOptimizer() {
         const dominant = Object.entries(brandMap).find(([, count]) => count / top20.length > 0.3);
         if (dominant) {
           return (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-              <p className="text-sm font-semibold text-amber-800">⚠️ {dominant[0]} accounts for {dominant[1]} of the top 20 promotion slots — consider diversifying budget across brands to reduce dependency.</p>
+            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">⚠️ {dominant[0]} accounts for {dominant[1]} of the top 20 promotion slots — consider diversifying budget across brands to reduce dependency.</p>
             </div>
           );
         }
         return (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
-            <p className="text-sm font-semibold text-emerald-800">✓ Budget is well-distributed across brands in the top 20.</p>
+          <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3">
+            <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">✓ Budget is well-distributed across brands in the top 20.</p>
           </div>
         );
       })()}

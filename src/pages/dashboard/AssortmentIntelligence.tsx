@@ -2,7 +2,10 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 import { datasets } from "@/data/dataLoader";
+import { chartTooltipProps } from "@/lib/chartStyles";
 import {
   BarChart,
   Bar,
@@ -22,7 +25,7 @@ function avg(nums: number[]): number {
   return nums.reduce((a, b) => a + b, 0) / nums.length;
 }
 
-function KPISimple({ title, value, subtitle, color }: { title: string; value: string; subtitle?: string; color?: "red" | "green" | "amber" }) {
+function KPISimple({ title, value, subtitle, color, tooltip }: { title: string; value: string; subtitle?: string; color?: "red" | "green" | "amber"; tooltip?: string }) {
   const border = color === "red"
     ? "border-l-4 border-l-red-500"
     : color === "green"
@@ -33,10 +36,15 @@ function KPISimple({ title, value, subtitle, color }: { title: string; value: st
   return (
     <Card className={cn("bg-gradient-card", border)}>
       <CardHeader className="pb-1">
-        <CardTitle className="text-xs font-medium text-muted-foreground">{title}</CardTitle>
+        <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+          {title}
+          {tooltip && (
+            <TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-3 w-3 cursor-help opacity-60 hover:opacity-100" /></TooltipTrigger><TooltipContent className="max-w-xs text-xs"><p>{tooltip}</p></TooltipContent></Tooltip></TooltipProvider>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-bold">{value}</p>
+        <p className="text-2xl font-bold tabular-nums">{value}</p>
         {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
       </CardContent>
     </Card>
@@ -196,10 +204,10 @@ export default function AssortmentIntelligence() {
 
       {/* Section 1 — KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPISimple title="Total SKUs Tracked" value={totalSKUs.toString()} />
-        <KPISimple title="Meesho Listed" value={meeshoListedCount.toString()} color="amber" />
-        <KPISimple title="Shopsy Listed" value={shopsyListedCount.toString()} color="green" />
-        <KPISimple title="Assortment Gap (Meesho-only)" value={assortmentGapCount.toString()} subtitle="SKUs on Meesho but not Shopsy" color="red" />
+        <KPISimple title="Total SKUs Tracked" value={totalSKUs.toString()} tooltip="Total number of unique SKUs in the master catalogue being monitored across both platforms" />
+        <KPISimple title="Meesho Listed" value={meeshoListedCount.toString()} color="amber" tooltip="SKUs currently listed and active on Meesho" />
+        <KPISimple title="Shopsy Listed" value={shopsyListedCount.toString()} color="green" tooltip="SKUs currently listed and active on Shopsy" />
+        <KPISimple title="Assortment Gap (Meesho-only)" value={assortmentGapCount.toString()} subtitle="SKUs on Meesho but not Shopsy" color="red" tooltip="Number of SKUs that are listed on Meesho but missing from Shopsy's catalogue — potential quick-add opportunities" />
       </div>
 
       {/* Section 2 — Brand Penetration */}
@@ -214,7 +222,7 @@ export default function AssortmentIntelligence() {
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="group" fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
               <YAxis tickFormatter={(v: number) => `${v}%`} fontSize={11} domain={[0, 100]} />
-              <RechartsTooltip formatter={(v: number) => [`${v}%`, ""]} />
+              <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [`${v}%`, ""]} />
               <Legend verticalAlign="top" height={28} />
               <Bar dataKey="Shopsy" fill="hsl(217, 91%, 60%)" radius={[4, 4, 0, 0]}>
                 <LabelList dataKey="Shopsy" position="top" fontSize={10} formatter={(v: number) => `${v}%`} />
@@ -251,7 +259,7 @@ export default function AssortmentIntelligence() {
                   <td className="py-1.5 px-2">{r.brand}</td>
                   <td className="py-1.5 px-2 capitalize">{r.affinity}</td>
                   <td className="py-1.5 px-2">{r.category}</td>
-                  <td className="py-1.5 px-2 font-medium">{r.genzScore > 0 ? r.genzScore.toFixed(0) : "\u2014"}</td>
+                  <td className="py-1.5 px-2 font-medium tabular-nums">{r.genzScore > 0 ? r.genzScore.toFixed(1) : "\u2014"}</td>
                   <td className="py-1.5 px-2">
                     {r.genzScore > 65 ? (
                       <Badge variant="destructive" className="text-[10px] px-1.5 py-0">High Priority</Badge>
@@ -289,9 +297,9 @@ export default function AssortmentIntelligence() {
                   <td className="py-1.5 px-2 max-w-[180px] truncate font-medium">{r.name}</td>
                   <td className="py-1.5 px-2">{r.brand}</td>
                   <td className="py-1.5 px-2">{r.category}</td>
-                  <td className="py-1.5 px-2">{r.meeshoDiscount.toFixed(1)}%</td>
-                  <td className="py-1.5 px-2">{r.shopsyDiscount.toFixed(1)}%</td>
-                  <td className="py-1.5 px-2 font-medium">{r.genzScore > 0 ? r.genzScore.toFixed(0) : "\u2014"}</td>
+                  <td className="py-1.5 px-2 tabular-nums">{r.meeshoDiscount.toFixed(1)}%</td>
+                  <td className="py-1.5 px-2 tabular-nums">{r.shopsyDiscount.toFixed(1)}%</td>
+                  <td className="py-1.5 px-2 font-medium tabular-nums">{r.genzScore > 0 ? r.genzScore.toFixed(1) : "\u2014"}</td>
                   <td className="py-1.5 px-2">
                     <Badge variant="default" className="text-[10px] px-1.5 py-0">Promote on Shopsy</Badge>
                   </td>
@@ -315,7 +323,7 @@ export default function AssortmentIntelligence() {
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" fontSize={11} />
                 <YAxis type="category" dataKey="category" width={140} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
-                <RechartsTooltip />
+                <RechartsTooltip {...chartTooltipProps} />
                 <Legend verticalAlign="top" height={28} />
                 <Bar dataKey="Shopsy" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]} />
                 <Bar dataKey="Meesho" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} />
