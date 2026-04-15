@@ -80,21 +80,6 @@ export default function AssortmentIntelligence() {
     return m;
   }, []);
 
-  const meeshoPromoMap = useMemo(() => {
-    const m: Record<string, { flag: number; discount: number }> = {};
-    datasets.priceTracking
-      .filter((r) => r.platform === "Meesho" && r.date === LATEST_DATE)
-      .forEach((r) => { m[r.sku_id] = { flag: r.promotion_flag, discount: r.discount_percent }; });
-    return m;
-  }, []);
-
-  const shopsyPromoMap = useMemo(() => {
-    const m: Record<string, { flag: number; discount: number }> = {};
-    datasets.priceTracking
-      .filter((r) => r.platform === "Shopsy" && r.date === LATEST_DATE)
-      .forEach((r) => { m[r.sku_id] = { flag: r.promotion_flag, discount: r.discount_percent }; });
-    return m;
-  }, []);
 
   /* ---------- Section 1 — KPIs ---------- */
 
