@@ -267,6 +267,7 @@ export default function GenZDemandSignals() {
           </div>
         </CardHeader>
         <CardContent className="overflow-x-auto">
+          <div className="max-h-[480px] overflow-y-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border">
@@ -298,6 +299,7 @@ export default function GenZDemandSignals() {
               )}
             </tbody>
           </table>
+          </div>
         </CardContent>
       </Card>
 
@@ -368,6 +370,7 @@ export default function GenZDemandSignals() {
           <p className="text-xs text-muted-foreground">High Gen Z traction SKUs (Meesho) that Shopsy is NOT promoting</p>
         </CardHeader>
         <CardContent className="overflow-x-auto">
+          <div className="max-h-[480px] overflow-y-auto">
           <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 flex items-start gap-3 mb-4">
             <span className="text-amber-500 text-lg shrink-0">⚡</span>
             <div>
@@ -409,6 +412,7 @@ export default function GenZDemandSignals() {
               ))}
             </tbody>
           </table>
+          </div>
         </CardContent>
       </Card>
     </div>

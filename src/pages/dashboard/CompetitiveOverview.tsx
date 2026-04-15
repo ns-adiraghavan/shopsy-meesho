@@ -276,7 +276,7 @@ export default function CompetitiveOverview() {
                       </div>
                       <p className="text-xs text-foreground/80 leading-relaxed">{evt.description}</p>
                     </div>
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0 pt-0.5">{evt.date}</span>
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0 pt-0.5">{new Date(evt.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
                   </div>
                 ))
               )}

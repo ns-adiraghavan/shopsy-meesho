@@ -127,8 +127,8 @@ export default function DemandAvailability() {
     });
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, v]) => ({
-        date: date.slice(5), // MM-DD
+      .map(([d, v]) => ({
+        date: new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
         Shopsy: +(avg(v.shopsy) * 100).toFixed(1),
         Meesho: +(avg(v.meesho) * 100).toFixed(1),
       }));
@@ -289,6 +289,7 @@ export default function DemandAvailability() {
           <p className="text-xs text-muted-foreground">Fix supply before promoting &mdash; must-have SKUs with elevated stockout frequency</p>
         </CardHeader>
         <CardContent className="overflow-x-auto">
+          <div className="max-h-[480px] overflow-y-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border">
@@ -316,6 +317,7 @@ export default function DemandAvailability() {
               ))}
             </tbody>
           </table>
+          </div>
         </CardContent>
       </Card>
     </div>

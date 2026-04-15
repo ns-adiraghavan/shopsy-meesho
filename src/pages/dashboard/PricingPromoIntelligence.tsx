@@ -301,6 +301,7 @@ export default function PricingPromoIntelligence() {
           <p className="text-xs text-muted-foreground">Shopsy rows, latest date, sorted by price gap descending</p>
         </CardHeader>
         <CardContent className="overflow-x-auto">
+          <div className="max-h-[480px] overflow-y-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border">
@@ -330,6 +331,7 @@ export default function PricingPromoIntelligence() {
               })}
             </tbody>
           </table>
+          </div>
         </CardContent>
       </Card>
     </div>
