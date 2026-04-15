@@ -80,9 +80,8 @@ const Landing = () => {
 
       {/* Hero */}
       <section className="container mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-10 text-center max-w-3xl">
-        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight mb-4">
-          Shopsy vs Meesho —{" "}
-          <span className="text-primary">Competitive Intelligence Dashboard</span>
+        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight mb-4 text-primary">
+          Competitive Intelligence Dashboard
         </h1>
         <p className="text-base lg:text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
           Track pricing gaps, Gen Z demand signals, assortment gaps, and promotion opportunities across India's leading social commerce platforms.
