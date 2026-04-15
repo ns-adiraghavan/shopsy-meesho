@@ -17,7 +17,7 @@ const Login = () => {
 
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate("/dashboard");
+    navigate("/dashboard/budget");
   };
 
   return (
