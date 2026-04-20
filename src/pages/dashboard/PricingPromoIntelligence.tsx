@@ -1,369 +1,588 @@
+/**
+ * PricingPromoIntelligence.tsx — v2.0 Category-First
+ *
+ * Layout:
+ *   Section 1 — 4 KPI cards (live from category_pricing + category_summary)
+ *   Section 2 — Two-panel main view
+ *     Left  — Subcategory price gap table with promo intensity inline
+ *              Each row has a "Flag for Budget" action (UI state only)
+ *     Right — Time-series chart for whichever row is selected
+ *   Section 3 — Unanswered Promotions: subcategories where Meesho is promoting, Shopsy is not
+ */
+
 import { useMemo, useState } from "react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HelpCircle, Flag, TrendingUp, TrendingDown, Minus, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { datasets } from "@/data/dataLoader";
 import { chartTooltipProps } from "@/lib/chartStyles";
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
-  Cell,
-  LabelList,
+  Legend,
+  ReferenceLine,
 } from "recharts";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+  getSubcategoryPriceIndex,
+  getPricingTrend,
+  getUnansweredPromos,
+  getLatestDate,
+  datasets,
+  GenZSignalLevel,
+} from "@/data/dataLoader";
 
-const PAGE_SIZE = 50;
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
 
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                           */
-/* ------------------------------------------------------------------ */
+const fmt1 = (n: number) => n.toFixed(1);
+const fmtPct = (n: number, forceSign = false) =>
+  `${forceSign && n > 0 ? "+" : ""}${n.toFixed(1)}%`;
 
-function avg(nums: number[]): number {
-  if (nums.length === 0) return 0;
-  return nums.reduce((a, b) => a + b, 0) / nums.length;
+const GENZ_LABELS: Record<GenZSignalLevel, string> = {
+  very_high: "Very High",
+  high: "High",
+  moderate: "Moderate",
+  low: "Low",
+};
+
+const GENZ_PILL: Record<GenZSignalLevel, string> = {
+  very_high: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+  high: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  moderate: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+  low: "bg-muted text-muted-foreground",
+};
+
+function priceGapBg(gap: number) {
+  if (gap > 15) return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-bold";
+  if (gap > 8) return "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400";
+  if (gap > 3) return "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400";
+  if (gap >= -2) return "bg-muted text-muted-foreground";
+  return "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400";
 }
 
-function gapColor(gap: number): string {
-  if (gap > 5) return "hsl(0, 72%, 51%)";
-  if (gap < -1) return "hsl(142, 71%, 45%)";
-  return "hsl(38, 92%, 50%)";
+function promoGapBg(gap: number) {
+  if (gap > 12) return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-bold";
+  if (gap > 6) return "bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400";
+  if (gap > 2) return "bg-amber-50 text-amber-600 dark:bg-amber-900/10 dark:text-amber-400";
+  return "bg-muted text-muted-foreground";
 }
 
-function actionLabel(gap: number): { text: string; variant: "destructive" | "default" | "secondary" | "outline" } {
-  if (gap > 10) return { text: "Flash Sale", variant: "destructive" };
-  if (gap >= 5) return { text: "Coupon", variant: "default" };
-  if (gap >= 0) return { text: "Monitor", variant: "secondary" };
-  return { text: "Hold", variant: "outline" };
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// KPI CARD (simple)
+// ─────────────────────────────────────────────────────────────────────────────
 
-/* ------------------------------------------------------------------ */
-/*  Page                                                              */
-/* ------------------------------------------------------------------ */
-
-export default function PricingPromoIntelligence() {
-  const [promoFilterPlatform, setPromoFilterPlatform] = useState("Both");
-  const [promoFilterCategory, setPromoFilterCategory] = useState("All");
-  const [promoPage, setPromoPage] = useState(0);
-
-  /* ---------- derived data ---------- */
-
-  const LATEST_DATE = useMemo(() => datasets.priceTracking.reduce((max, r) => r.date > max ? r.date : max, ""), []);
-
-  const latestRows = useMemo(
-    () => datasets.priceTracking.filter((r) => r.date === LATEST_DATE),
-    [LATEST_DATE]
-  );
-
-  const shopsyRows = useMemo(() => latestRows.filter((r) => r.platform === "Shopsy"), [latestRows]);
-  const meeshoRows = useMemo(() => latestRows.filter((r) => r.platform === "Meesho"), [latestRows]);
-
-  // KPI 1 — overpriced count
-  const overpricedCount = useMemo(() => shopsyRows.filter((r) => r.price_gap_pct > 0).length, [shopsyRows]);
-
-  // KPI 2 — avg price gap
-  const avgGap = useMemo(() => avg(shopsyRows.map((r) => r.price_gap_pct)), [shopsyRows]);
-
-  // KPI 3 — Meesho promo rate
-  const meeshoPromoRate = useMemo(() => avg(meeshoRows.map((r) => r.promotion_flag)) * 100, [meeshoRows]);
-
-  // KPI 4 — Shopsy promo rate
-  const shopsyPromoRate = useMemo(() => avg(shopsyRows.map((r) => r.promotion_flag)) * 100, [shopsyRows]);
-
-  // Section 2 — category price gap
-  const categoryGapData = useMemo(() => {
-    const map: Record<string, number[]> = {};
-    shopsyRows.forEach((r) => {
-      (map[r.category] ??= []).push(r.price_gap_pct);
-    });
-    return Object.entries(map)
-      .map(([category, gaps]) => ({ category, gap: +avg(gaps).toFixed(1) }))
-      .sort((a, b) => b.gap - a.gap);
-  }, [shopsyRows]);
-
-  // Section 3 — promo rate by category per platform
-  const promoByCategory = useMemo(() => {
-    const build = (rows: typeof latestRows) => {
-      const map: Record<string, number[]> = {};
-      rows.forEach((r) => {
-        (map[r.category] ??= []).push(r.promotion_flag);
-      });
-      return Object.entries(map)
-        .map(([category, flags]) => ({ category, rate: +(avg(flags) * 100).toFixed(1) }))
-        .sort((a, b) => b.rate - a.rate);
-    };
-    return { meesho: build(meeshoRows), shopsy: build(shopsyRows) };
-  }, [meeshoRows, shopsyRows]);
-
-  // Section 4 — active promos
-  const categories = useMemo(() => {
-    const s = new Set(latestRows.map((r) => r.category));
-    return Array.from(s).sort();
-  }, [latestRows]);
-
-  const filteredPromos = useMemo(() => {
-    let rows = latestRows.filter((r) => r.promotion_flag === 1);
-    if (promoFilterPlatform !== "Both") rows = rows.filter((r) => r.platform === promoFilterPlatform);
-    if (promoFilterCategory !== "All") rows = rows.filter((r) => r.category === promoFilterCategory);
-    return rows.sort((a, b) => b.discount_percent - a.discount_percent);
-  }, [latestRows, promoFilterPlatform, promoFilterCategory]);
-
-  const promoPageCount = Math.max(1, Math.ceil(filteredPromos.length / PAGE_SIZE));
-  const pagedPromos = filteredPromos.slice(promoPage * PAGE_SIZE, (promoPage + 1) * PAGE_SIZE);
-
-  // Section 5 — SKU benchmark
-  const skuNameMap = useMemo(() => {
-    const m: Record<string, string> = {};
-    datasets.skuMaster.forEach((s) => {
-      m[s.sku_id] = s.normalized_name;
-    });
-    return m;
-  }, []);
-
-  const skuBenchmark = useMemo(() => {
-    const meeshoPriceMap: Record<string, number> = {};
-    meeshoRows.forEach((r) => {
-      meeshoPriceMap[r.sku_id] = r.sale_price;
-    });
-    return shopsyRows
-      .map((r) => ({
-        sku_id: r.sku_id,
-        name: skuNameMap[r.sku_id] || r.sku_id,
-        category: r.category,
-        shopsyPrice: r.sale_price,
-        meeshoPrice: meeshoPriceMap[r.sku_id] ?? null,
-        gap: r.price_gap_pct,
-      }))
-      .sort((a, b) => b.gap - a.gap)
-      .slice(0, 100);
-  }, [shopsyRows, meeshoRows, skuNameMap]);
-
-  /* ---------- render ---------- */
-
-  return (
-    <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
-      <h1 className="text-lg font-semibold">Pricing &amp; Promotions Intelligence</h1>
-
-      {/* Section 1 — KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPISimple title="SKUs Where Shopsy Overpriced" value={overpricedCount.toString()} subtitle={`of ${shopsyRows.length} SKUs`} color="red" tooltip="Number of SKUs where Shopsy's sale price is higher than Meesho's equivalent, as of the latest date" />
-        <KPISimple title="Avg Price Gap (Shopsy vs Meesho)" value={`${avgGap >= 0 ? "+" : ""}${avgGap.toFixed(1)}%`} color={avgGap > 0 ? "red" : "green"} tooltip="Average percentage difference between Shopsy and Meesho sale prices. Positive = Shopsy is more expensive" />
-        <KPISimple title="Meesho Active Promo Rate" value={`${meeshoPromoRate.toFixed(1)}%`} color="amber" tooltip="Percentage of Meesho SKUs currently running an active promotion (coupon, flash sale, or markdown)" />
-        <KPISimple title="Shopsy Active Promo Rate" value={`${shopsyPromoRate.toFixed(1)}%`} tooltip="Percentage of Shopsy SKUs currently running an active promotion" />
-      </div>
-
-      {/* Section 2 — Category Price Gap */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Category Price Competitiveness</CardTitle>
-          <p className="text-xs text-muted-foreground">Avg price gap % by category (Shopsy vs Meesho). Red = overpriced, Green = cheaper.</p>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={Math.max(280, categoryGapData.length * 32)}>
-            <BarChart data={categoryGapData} layout="vertical" margin={{ left: 140, right: 40, top: 5, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" tickFormatter={(v: number) => `${v}%`} fontSize={11} />
-              <YAxis type="category" dataKey="category" width={130} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
-              <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [`${v}%`, "Avg Gap"]} />
-              <Bar dataKey="gap" radius={[0, 4, 4, 0]}>
-                {categoryGapData.map((entry, i) => (
-                  <Cell key={i} fill={gapColor(entry.gap)} />
-                ))}
-                <LabelList dataKey="gap" position="right" fontSize={10} formatter={(v: number) => `${v}%`} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Section 3 — Promo Gap */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Promotion Gap: Meesho is out-promoting Shopsy across all categories</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">Meesho Promo Rate by Category</p>
-              <ResponsiveContainer width="100%" height={Math.max(240, promoByCategory.meesho.length * 30)}>
-                <BarChart data={promoByCategory.meesho} layout="vertical" margin={{ left: 130, right: 30, top: 5, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" tickFormatter={(v: number) => `${v}%`} fontSize={11} />
-                  <YAxis type="category" dataKey="category" width={120} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
-                  <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [`${v}%`, "Promo Rate"]} />
-                  <Bar dataKey="rate" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]}>
-                    <LabelList dataKey="rate" position="right" fontSize={10} formatter={(v: number) => `${v}%`} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">Shopsy Promo Rate by Category</p>
-              <ResponsiveContainer width="100%" height={Math.max(240, promoByCategory.shopsy.length * 30)}>
-                <BarChart data={promoByCategory.shopsy} layout="vertical" margin={{ left: 130, right: 30, top: 5, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" tickFormatter={(v: number) => `${v}%`} fontSize={11} />
-                  <YAxis type="category" dataKey="category" width={120} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
-                  <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [`${v}%`, "Promo Rate"]} />
-                  <Bar dataKey="rate" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]}>
-                    <LabelList dataKey="rate" position="right" fontSize={10} formatter={(v: number) => `${v}%`} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Section 4 — Active Promotions Tracker */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-base">Active Promotions Tracker</CardTitle>
-            <div className="flex items-center gap-2">
-              <Select value={promoFilterPlatform} onValueChange={(v) => { setPromoFilterPlatform(v); setPromoPage(0); }}>
-                <SelectTrigger className="h-7 text-xs w-[110px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Both">Both</SelectItem>
-                  <SelectItem value="Shopsy">Shopsy</SelectItem>
-                  <SelectItem value="Meesho">Meesho</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                <Button variant="ghost" size="sm" className={cn("rounded-full h-7 text-xs px-3 shrink-0", promoFilterCategory === "All" ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-muted text-muted-foreground hover:bg-muted/70")} onClick={() => { setPromoFilterCategory("All"); setPromoPage(0); }}>All</Button>
-                {categories.map((c) => (
-                  <Button key={c} variant="ghost" size="sm" className={cn("rounded-full h-7 text-xs px-3 shrink-0", promoFilterCategory === c ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-muted text-muted-foreground hover:bg-muted/70")} onClick={() => { setPromoFilterCategory(c); setPromoPage(0); }}>{c}</Button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border">
-                {["SKU ID", "Category", "Brand", "Platform", "Promo Type", "Discount %", "Price Gap %"].map((h) => (
-                  <th key={h} className="text-left py-2 px-2 font-medium text-muted-foreground">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {pagedPromos.length === 0 ? (
-                <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">No active promotions found.</td></tr>
-              ) : pagedPromos.map((r, i) => (
-                <tr key={`${r.sku_id}-${r.platform}-${i}`} className="border-b border-border/40 hover:bg-muted/30">
-                  <td className="py-1.5 px-2 font-mono text-xs tabular-nums">{r.sku_id}</td>
-                  <td className="py-1.5 px-2">{r.category}</td>
-                  <td className="py-1.5 px-2">{r.brand}</td>
-                  <td className="py-1.5 px-2">
-                    <Badge variant={r.platform === "Shopsy" ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">{r.platform}</Badge>
-                  </td>
-                  <td className="py-1.5 px-2">{r.promotion_type || "\u2014"}</td>
-                  <td className="py-1.5 px-2 tabular-nums">{r.discount_percent.toFixed(1)}%</td>
-                  <td className={cn("py-1.5 px-2 font-medium tabular-nums", r.price_gap_pct > 5 ? "text-red-600 dark:text-red-400" : r.price_gap_pct < -1 ? "text-emerald-600 dark:text-emerald-400" : "")}>
-                    {r.price_gap_pct > 0 ? "+" : ""}{r.price_gap_pct.toFixed(1)}%
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {promoPageCount > 1 && (
-            <div className="flex items-center justify-between pt-3">
-              <p className="text-[10px] text-muted-foreground">{filteredPromos.length} rows &middot; Page {promoPage + 1} of {promoPageCount}</p>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="h-6 w-6" disabled={promoPage === 0} onClick={() => setPromoPage((p) => p - 1)}><ChevronLeft className="h-3 w-3" /></Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6" disabled={promoPage >= promoPageCount - 1} onClick={() => setPromoPage((p) => p + 1)}><ChevronRight className="h-3 w-3" /></Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Section 5 — SKU Benchmark */}
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-primary/70 mb-1">SKU-Level Detail</p>
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">SKU-Level Price Benchmark</CardTitle>
-          <p className="text-xs text-muted-foreground">Shopsy rows, latest date, sorted by price gap descending</p>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <div className="max-h-[480px] overflow-y-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border">
-                {["SKU ID", "Product Name", "Category", "Shopsy Price", "Meesho Price", "Gap %", "Action"].map((h) => (
-                  <th key={h} className="text-left py-2 px-2 font-medium text-muted-foreground">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {skuBenchmark.map((r, i) => {
-                const action = actionLabel(r.gap);
-                return (
-                  <tr key={`${r.sku_id}-${i}`} className="border-b border-border/40 hover:bg-muted/30">
-                    <td className="py-1.5 px-2 font-mono text-xs tabular-nums">{r.sku_id}</td>
-                    <td className="py-1.5 px-2 max-w-[200px] truncate">{r.name}</td>
-                    <td className="py-1.5 px-2">{r.category}</td>
-                    <td className="py-1.5 px-2 tabular-nums">{"\u20B9"}{r.shopsyPrice.toFixed(0)}</td>
-                    <td className="py-1.5 px-2 tabular-nums">{r.meeshoPrice !== null ? `\u20B9${r.meeshoPrice.toFixed(0)}` : "\u2014"}</td>
-                    <td className={cn("py-1.5 px-2 font-medium tabular-nums", r.gap > 5 ? "text-red-600 dark:text-red-400" : r.gap < -1 ? "text-emerald-600 dark:text-emerald-400" : "")}>
-                      {r.gap > 0 ? "+" : ""}{r.gap.toFixed(1)}%
-                    </td>
-                    <td className="py-1.5 px-2">
-                      <Badge variant={action.variant} className="text-[10px] px-1.5 py-0">{action.text}</Badge>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Simple KPI card (local)                                           */
-/* ------------------------------------------------------------------ */
-
-function KPISimple({ title, value, subtitle, color, tooltip }: { title: string; value: string; subtitle?: string; color?: "red" | "green" | "amber"; tooltip?: string }) {
-  const border = color === "red"
-    ? "border-l-4 border-l-red-500"
-    : color === "green"
-      ? "border-l-4 border-l-emerald-500"
-      : color === "amber"
-        ? "border-l-4 border-l-amber-500"
-        : "border-l-4 border-l-border";
+function KPICard({
+  title, value, subtitle, color, tooltip,
+}: {
+  title: string; value: string; subtitle?: string;
+  color?: "red" | "green" | "amber"; tooltip?: string;
+}) {
+  const border =
+    color === "red"   ? "border-l-4 border-l-red-500" :
+    color === "green" ? "border-l-4 border-l-emerald-500" :
+    color === "amber" ? "border-l-4 border-l-amber-500" :
+                        "border-l-4 border-l-border";
   return (
     <Card className={cn("bg-gradient-card", border)}>
-      <CardHeader className="pb-1">
+      <CardHeader className="pb-1 pt-4 px-4">
         <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
           {title}
           {tooltip && (
-            <TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-3 w-3 cursor-help opacity-60 hover:opacity-100" /></TooltipTrigger><TooltipContent className="max-w-xs text-xs"><p>{tooltip}</p></TooltipContent></Tooltip></TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3 w-3 cursor-help opacity-60 hover:opacity-100" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs text-xs"><p>{tooltip}</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pb-4 pt-1">
         <p className="text-2xl font-bold tabular-nums">{value}</p>
         {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
       </CardContent>
     </Card>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIME-SERIES PANEL
+// Shows Shopsy price gap trend for selected category × subcategory
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface TrendSelection {
+  category: string;
+  subcategory: string;
+}
+
+function TrendPanel({ selection }: { selection: TrendSelection | null }) {
+  const trendData = useMemo(() => {
+    if (!selection) return [];
+    const shopsy = getPricingTrend(selection.category, selection.subcategory, "Shopsy");
+    const meesho = getPricingTrend(selection.category, selection.subcategory, "Meesho");
+    const meeshoByDate: Record<string, number> = {};
+    meesho.forEach((r) => { meeshoByDate[r.date] = r.avg_sale_price; });
+
+    return shopsy.map((r) => ({
+      date: r.date.slice(5),       // "MM-DD"
+      priceGap: +r.price_gap_pct.toFixed(1),
+      shopsyPrice: +r.avg_sale_price.toFixed(0),
+      meeshoPrice: meeshoByDate[r.date] ? +meeshoByDate[r.date].toFixed(0) : null,
+      shopsyPromo: r.promotion_flag === 1,
+      meeshoPromo: datasets.categoryPricing.find(
+        (p) => p.date === r.date && p.category === selection.category &&
+               p.subcategory === selection.subcategory && p.platform === "Meesho"
+      )?.promotion_flag === 1,
+    }));
+  }, [selection]);
+
+  if (!selection) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[320px] text-center px-6">
+        <TrendingUp className="h-8 w-8 text-muted-foreground/40 mb-3" />
+        <p className="text-sm text-muted-foreground">Select a subcategory row to view its price gap trend</p>
+        <p className="text-xs text-muted-foreground/60 mt-1">14-day price gap and promo activity</p>
+      </div>
+    );
+  }
+
+  const firstGap = trendData[0]?.priceGap ?? 0;
+  const lastGap  = trendData[trendData.length - 1]?.priceGap ?? 0;
+  const gapDelta = lastGap - firstGap;
+  const TrendIcon = gapDelta > 1 ? TrendingUp : gapDelta < -1 ? TrendingDown : Minus;
+  const trendColor = gapDelta > 1 ? "text-red-500" : gapDelta < -1 ? "text-emerald-500" : "text-muted-foreground";
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="text-xs font-semibold text-foreground">{selection.subcategory}</p>
+        <p className="text-[10px] text-muted-foreground">{selection.category}</p>
+      </div>
+
+      <div className="flex items-center gap-4 text-xs">
+        <div>
+          <p className="text-muted-foreground text-[10px]">Latest gap</p>
+          <p className={cn("font-bold tabular-nums text-sm", lastGap > 5 ? "text-red-600" : lastGap < 0 ? "text-emerald-600" : "")}>
+            {fmtPct(lastGap, true)}
+          </p>
+        </div>
+        <div>
+          <p className="text-muted-foreground text-[10px]">14-day change</p>
+          <div className={cn("flex items-center gap-0.5 font-semibold tabular-nums", trendColor)}>
+            <TrendIcon className="h-3.5 w-3.5" />
+            {fmtPct(Math.abs(gapDelta), false)}
+          </div>
+        </div>
+      </div>
+
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={trendData} margin={{ top: 4, right: 12, left: -10, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <XAxis dataKey="date" fontSize={10} tick={{ fill: "hsl(var(--muted-foreground))" }} />
+          <YAxis fontSize={10} tick={{ fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => `${v}%`} />
+          <RechartsTooltip
+            {...chartTooltipProps}
+            formatter={(val: number, name: string) => [
+              name === "priceGap" ? `${val}%` : `₹${val}`,
+              name === "priceGap" ? "Price Gap" : name,
+            ]}
+          />
+          <ReferenceLine y={0} stroke="hsl(var(--border))" strokeDasharray="4 2" />
+          <Line
+            type="monotone"
+            dataKey="priceGap"
+            stroke="hsl(0, 72%, 51%)"
+            strokeWidth={2}
+            dot={false}
+            name="priceGap"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+
+      <div className="border-t border-border/50 pt-3">
+        <p className="text-[10px] text-muted-foreground mb-2">Avg Sale Price — 14 days</p>
+        <ResponsiveContainer width="100%" height={160}>
+          <LineChart data={trendData} margin={{ top: 4, right: 12, left: -10, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="date" fontSize={10} tick={{ fill: "hsl(var(--muted-foreground))" }} />
+            <YAxis fontSize={10} tick={{ fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => `₹${v}`} />
+            <RechartsTooltip {...chartTooltipProps} formatter={(val: number) => [`₹${val}`, ""]} />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+            <Line type="monotone" dataKey="shopsyPrice" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={false} name="Shopsy" />
+            <Line type="monotone" dataKey="meeshoPrice" stroke="hsl(38, 92%, 50%)" strokeWidth={2} dot={false} name="Meesho" />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default function PricingPromoIntelligence() {
+  const [selectedRow, setSelectedRow] = useState<TrendSelection | null>(null);
+  const [flagged, setFlagged] = useState<Set<string>>(new Set());
+  const [categoryFilter, setCategoryFilter] = useState<string>("All");
+
+  const latestDate = getLatestDate();
+
+  // Subcategory price index — core table data
+  const priceIndex = useMemo(() => getSubcategoryPriceIndex(), [latestDate]);
+
+  // Unanswered promos
+  const unanswered = useMemo(() => getUnansweredPromos(), [latestDate]);
+
+  // Category filter list
+  const categories = useMemo(
+    () => ["All", ...Array.from(new Set(priceIndex.map((r) => r.category))).sort()],
+    [priceIndex]
+  );
+
+  const filteredRows = useMemo(() => {
+    const rows = categoryFilter === "All"
+      ? priceIndex
+      : priceIndex.filter((r) => r.category === categoryFilter);
+    return [...rows].sort((a, b) => b.shopsy_price_gap_pct - a.shopsy_price_gap_pct);
+  }, [priceIndex, categoryFilter]);
+
+  // KPIs
+  const avgGap = useMemo(() => {
+    if (!filteredRows.length) return 0;
+    return filteredRows.reduce((s, r) => s + r.shopsy_price_gap_pct, 0) / filteredRows.length;
+  }, [filteredRows]);
+
+  const overpricedCount = useMemo(() =>
+    filteredRows.filter((r) => r.shopsy_price_gap_pct > 5).length, [filteredRows]);
+
+  const meeshoPromoRate = useMemo(() => {
+    const all = datasets.categoryPricing.filter((r) => r.date === latestDate && r.platform === "Meesho");
+    if (!all.length) return 0;
+    return (all.reduce((s, r) => s + r.promotion_flag, 0) / all.length) * 100;
+  }, [latestDate]);
+
+  const shopsyPromoRate = useMemo(() => {
+    const all = datasets.categoryPricing.filter((r) => r.date === latestDate && r.platform === "Shopsy");
+    if (!all.length) return 0;
+    return (all.reduce((s, r) => s + r.promotion_flag, 0) / all.length) * 100;
+  }, [latestDate]);
+
+  const promoGap = meeshoPromoRate - shopsyPromoRate;
+
+  // Flag helpers
+  const flagKey = (cat: string, sub: string) => `${cat}||${sub}`;
+
+  const toggleFlag = (cat: string, sub: string) => {
+    setFlagged((prev) => {
+      const next = new Set(prev);
+      const k = flagKey(cat, sub);
+      next.has(k) ? next.delete(k) : next.add(k);
+      return next;
+    });
+  };
+
+  return (
+    <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h1 className="text-lg font-semibold">Pricing &amp; Promotions Intelligence</h1>
+        {flagged.size > 0 && (
+          <div className="flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs font-medium text-primary">
+            <Flag className="h-3.5 w-3.5" />
+            {flagged.size} subcategor{flagged.size === 1 ? "y" : "ies"} flagged for Budget
+          </div>
+        )}
+      </div>
+
+      {/* ── Section 1 — KPIs ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KPICard
+          title="Subcategories Overpriced vs Meesho"
+          value={String(overpricedCount)}
+          subtitle={`of ${filteredRows.length} subcategories >+5%`}
+          color="red"
+          tooltip="Subcategories where Shopsy's average sale price exceeds Meesho's by more than 5%."
+        />
+        <KPICard
+          title="Avg Price Gap (Shopsy vs Meesho)"
+          value={fmtPct(avgGap, true)}
+          color={avgGap > 5 ? "red" : avgGap < -2 ? "green" : "amber"}
+          tooltip="Average % difference between Shopsy and Meesho avg sale prices across all subcategories. Positive = Shopsy more expensive."
+        />
+        <KPICard
+          title="Promo Intensity Gap"
+          value={`+${fmt1(promoGap)}pp`}
+          subtitle="Meesho promoting more"
+          color="amber"
+          tooltip="Meesho's active promo rate minus Shopsy's. Positive = Meesho is out-promoting Shopsy."
+        />
+        <KPICard
+          title="Unanswered Promos"
+          value={String(unanswered.length)}
+          subtitle="Meesho active, Shopsy silent"
+          color={unanswered.length > 5 ? "red" : "amber"}
+          tooltip="Subcategories where Meesho has an active promotion today but Shopsy does not."
+        />
+      </div>
+
+      {/* ── Section 2 — Two-panel: table + trend ────────────────────────── */}
+      <section>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-primary/70 mb-2">
+          Subcategory Price &amp; Promotion Analysis
+        </p>
+
+        {/* Category filter pills */}
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {categories.map((cat) => (
+            <Button
+              key={cat}
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "rounded-full h-7 text-xs px-3",
+                categoryFilter === cat
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70"
+              )}
+              onClick={() => setCategoryFilter(cat)}
+            >
+              {cat}
+            </Button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-4">
+
+          {/* LEFT — Subcategory table */}
+          <Card className="min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Subcategory Price Index</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Shopsy vs Meesho — sorted by price gap descending.
+                Click a row to view its trend. <Flag className="inline h-3 w-3 mb-0.5" /> to flag for Budget.
+              </p>
+            </CardHeader>
+            <CardContent className="p-0 pb-2 overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left py-2.5 pl-4 pr-2 font-medium text-muted-foreground w-[160px]">Subcategory</th>
+                    <th className="text-left py-2.5 pr-3 font-medium text-muted-foreground text-[10px] w-[130px]">Category</th>
+                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger className="flex items-center gap-1 mx-auto">
+                            Price Gap <HelpCircle className="h-3 w-3 opacity-50" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Shopsy avg sale price vs Meesho. Positive = Shopsy more expensive.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </th>
+                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger className="flex items-center gap-1 mx-auto">
+                            Promo Gap <HelpCircle className="h-3 w-3 opacity-50" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Meesho promo rate minus Shopsy promo rate. Positive = Meesho promoting more.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </th>
+                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Gen Z</th>
+                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Meesho Campaign</th>
+                    <th className="text-right py-2.5 pl-2 pr-4 font-medium text-muted-foreground">Flag</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                        No data loaded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRows.map((row) => {
+                      const key = flagKey(row.category, row.subcategory);
+                      const isFlagged = flagged.has(key);
+                      const isSelected =
+                        selectedRow?.category === row.category &&
+                        selectedRow?.subcategory === row.subcategory;
+
+                      return (
+                        <tr
+                          key={key}
+                          className={cn(
+                            "border-b border-border/40 last:border-0 cursor-pointer transition-colors",
+                            isSelected
+                              ? "bg-primary/8 border-l-2 border-l-primary"
+                              : "hover:bg-muted/20"
+                          )}
+                          onClick={() =>
+                            setSelectedRow(
+                              isSelected ? null : { category: row.category, subcategory: row.subcategory }
+                            )
+                          }
+                        >
+                          <td className="py-2.5 pl-4 pr-2 font-medium">{row.subcategory}</td>
+                          <td className="py-2.5 pr-3 text-muted-foreground text-[10px]">{row.category}</td>
+
+                          {/* Price Gap */}
+                          <td className="py-2.5 px-2 text-center">
+                            <span className={cn("inline-block rounded px-2 py-0.5 text-xs tabular-nums", priceGapBg(row.shopsy_price_gap_pct))}>
+                              {fmtPct(row.shopsy_price_gap_pct, true)}
+                            </span>
+                          </td>
+
+                          {/* Promo Gap */}
+                          <td className="py-2.5 px-2 text-center">
+                            <span className={cn("inline-block rounded px-2 py-0.5 text-xs tabular-nums", promoGapBg(row.promo_intensity_gap))}>
+                              {row.promo_intensity_gap > 0 ? "+" : ""}{fmt1(row.promo_intensity_gap)}pp
+                            </span>
+                          </td>
+
+                          {/* Gen Z Signal */}
+                          <td className="py-2.5 px-2 text-center">
+                            <span className={cn("inline-block rounded px-1.5 py-0.5 text-[10px] font-medium", GENZ_PILL[row.genz_signal])}>
+                              {GENZ_LABELS[row.genz_signal]}
+                            </span>
+                          </td>
+
+                          {/* Meesho Campaign Active */}
+                          <td className="py-2.5 px-2 text-center">
+                            {row.campaign_active_meesho ? (
+                              <Badge className="bg-amber-500/90 hover:bg-amber-500 text-white text-[10px] px-1.5 py-0">
+                                Active
+                              </Badge>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">—</span>
+                            )}
+                          </td>
+
+                          {/* Flag for Budget */}
+                          <td className="py-2.5 pl-2 pr-4 text-right">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleFlag(row.category, row.subcategory); }}
+                              className={cn(
+                                "rounded p-1 transition-colors",
+                                isFlagged
+                                  ? "text-primary bg-primary/10"
+                                  : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                              )}
+                              title={isFlagged ? "Unflag" : "Flag for Budget"}
+                            >
+                              <Flag className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+
+          {/* RIGHT — Trend panel */}
+          <Card className="min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">14-Day Price Trend</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Price gap and avg sale price over the data window
+              </p>
+            </CardHeader>
+            <CardContent>
+              <TrendPanel selection={selectedRow} />
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* ── Section 3 — Unanswered Promotions ───────────────────────────── */}
+      <section>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-primary/70 mb-2">
+          Unanswered Promotions
+        </p>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              Meesho is promoting — Shopsy is silent
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Subcategories where Meesho has an active promotion today and Shopsy does not.
+              These are the highest-priority budget response opportunities.
+            </p>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            {unanswered.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                No unanswered promotions detected today.
+              </p>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left py-2.5 pl-4 pr-3 font-medium text-muted-foreground">Subcategory</th>
+                    <th className="text-left py-2.5 pr-3 font-medium text-muted-foreground">Category</th>
+                    <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">Gen Z Signal</th>
+                    <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">Meesho Discount Depth</th>
+                    <th className="text-right py-2.5 pl-3 pr-4 font-medium text-muted-foreground">Flag for Budget</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unanswered.map((row, i) => {
+                    const key = flagKey(row.category, row.subcategory);
+                    const isFlagged = flagged.has(key);
+                    return (
+                      <tr key={i} className="border-b border-border/40 last:border-0 hover:bg-muted/20">
+                        <td className="py-2.5 pl-4 pr-3 font-medium">{row.subcategory}</td>
+                        <td className="py-2.5 pr-3 text-muted-foreground">{row.category}</td>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className={cn("inline-block rounded px-1.5 py-0.5 text-[10px] font-medium", GENZ_PILL[row.genz_signal])}>
+                            {GENZ_LABELS[row.genz_signal]}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className="inline-block rounded px-2 py-0.5 text-xs font-semibold tabular-nums bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                            {fmt1(row.meesho_discount_depth)}%
+                          </span>
+                        </td>
+                        <td className="py-2.5 pl-3 pr-4 text-right">
+                          <button
+                            onClick={() => toggleFlag(row.category, row.subcategory)}
+                            className={cn(
+                              "rounded p-1 transition-colors",
+                              isFlagged
+                                ? "text-primary bg-primary/10"
+                                : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                            )}
+                          >
+                            <Flag className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+    </div>
   );
 }
