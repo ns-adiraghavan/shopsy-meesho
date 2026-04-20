@@ -14,6 +14,7 @@ import AssortmentIntelligence from "./pages/dashboard/AssortmentIntelligence";
 import GenZDemandSignals from "./pages/dashboard/GenZDemandSignals";
 import DemandAvailability from "./pages/dashboard/DemandAvailability";
 import PromotionBudgetOptimizer from "./pages/dashboard/PromotionBudgetOptimizer";
+import AnalyticsTaxonomy from "./pages/AnalyticsTaxonomy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
                 <Route path="demand" element={<DemandAvailability />} />
                 <Route path="budget" element={<PromotionBudgetOptimizer />} />
               </Route>
+              <Route path="/analytics-taxonomy" element={<AnalyticsTaxonomy />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
