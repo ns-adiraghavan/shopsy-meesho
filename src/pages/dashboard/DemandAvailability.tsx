@@ -1,10 +1,21 @@
-import { useMemo } from "react";
+/**
+ * DemandAvailability.tsx — v2.0 Category-First
+ *
+ * Layout:
+ *   Section 1 — 4 KPI cards
+ *   Section 2 — Action queue: 3 columns (Promote, Fix Supply, Monitor)
+ *   Section 3 — Availability trend line chart (14-day, Shopsy vs Meesho)
+ *   Section 4 — Stockout risk by category bar chart (Shopsy vs Meesho)
+ *   Section 5 — Subcategory demand table with 7-day trend direction
+ */
+
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
-import { datasets } from "@/data/dataLoader";
+import { HelpCircle, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { chartTooltipProps } from "@/lib/chartStyles";
 import {
   BarChart,
@@ -17,32 +28,85 @@ import {
   Legend,
   LineChart,
   Line,
+  LabelList,
 } from "recharts";
+import {
+  getDemandLatest,
+  getAvailabilityTrend,
+  getAvailabilityTrendDirection,
+  getLatestDate,
+  getAllDates,
+  datasets,
+  GenZSignalLevel,
+} from "@/data/dataLoader";
 
-function avg(nums: number[]): number {
-  if (nums.length === 0) return 0;
-  return nums.reduce((a, b) => a + b, 0) / nums.length;
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const fmt1 = (n: number) => n.toFixed(1);
+
+const GENZ_PILL: Record<GenZSignalLevel, string> = {
+  very_high: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+  high:      "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  moderate:  "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+  low:       "bg-muted text-muted-foreground",
+};
+
+const GENZ_LABEL: Record<GenZSignalLevel, string> = {
+  very_high: "Very High", high: "High", moderate: "Moderate", low: "Low",
+};
+
+function actionFlagBadge(flag: string) {
+  switch (flag) {
+    case "Act Now":
+      return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Act Now</Badge>;
+    case "Monitor":
+      return <Badge className="bg-amber-500/90 hover:bg-amber-500 text-white text-[10px] px-1.5 py-0">Monitor</Badge>;
+    default:
+      return <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Hold</Badge>;
+  }
 }
 
-function KPISimple({ title, value, subtitle, color, tooltip }: { title: string; value: string; subtitle?: string; color?: "red" | "green" | "amber"; tooltip?: string }) {
-  const border = color === "red"
-    ? "border-l-4 border-l-red-500"
-    : color === "green"
-      ? "border-l-4 border-l-emerald-500"
-      : color === "amber"
-        ? "border-l-4 border-l-amber-500"
-        : "border-l-4 border-l-border";
+function TrendIcon({ direction }: { direction: number }) {
+  if (direction > 0) return <TrendingUp className="h-3.5 w-3.5 text-red-500" />;
+  if (direction < 0) return <TrendingDown className="h-3.5 w-3.5 text-emerald-500" />;
+  return <Minus className="h-3.5 w-3.5 text-muted-foreground" />;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KPI CARD
+// ─────────────────────────────────────────────────────────────────────────────
+
+function KPICard({
+  title, value, subtitle, color, tooltip,
+}: {
+  title: string; value: string; subtitle?: string;
+  color?: "red" | "green" | "amber"; tooltip?: string;
+}) {
+  const border =
+    color === "red"   ? "border-l-4 border-l-red-500" :
+    color === "green" ? "border-l-4 border-l-emerald-500" :
+    color === "amber" ? "border-l-4 border-l-amber-500" :
+                        "border-l-4 border-l-border";
   return (
     <Card className={cn("bg-gradient-card", border)}>
-      <CardHeader className="pb-1">
+      <CardHeader className="pb-1 pt-4 px-4">
         <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
           {title}
           {tooltip && (
-            <TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-3 w-3 cursor-help opacity-60 hover:opacity-100" /></TooltipTrigger><TooltipContent className="max-w-xs text-xs"><p>{tooltip}</p></TooltipContent></Tooltip></TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3 w-3 cursor-help opacity-60 hover:opacity-100" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs text-xs"><p>{tooltip}</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pb-4 pt-1">
         <p className="text-2xl font-bold tabular-nums">{value}</p>
         {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
       </CardContent>
@@ -50,205 +114,333 @@ function KPISimple({ title, value, subtitle, color, tooltip }: { title: string; 
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function DemandAvailability() {
-  const LATEST_DATE = useMemo(() => datasets.demandSignals.reduce((max, r) => r.date > max ? r.date : max, ""), []);
+  const [catFilter, setCatFilter] = useState("All");
+  const [platformFilter, setPlatformFilter] = useState<"Both" | "Shopsy" | "Meesho">("Both");
 
-  const skuNameMap = useMemo(() => {
-    const m: Record<string, string> = {};
-    datasets.skuMaster.forEach((s) => { m[s.sku_id] = s.normalized_name; });
-    return m;
-  }, []);
+  const latestDate = getLatestDate();
+  const allDates   = getAllDates();
 
-  const shopsyLatest = useMemo(
-    () => datasets.demandSignals.filter((r) => r.platform === "Shopsy" && r.date === LATEST_DATE),
-    [LATEST_DATE]
+  // Latest demand for both platforms
+  const demandAll    = useMemo(() => getDemandLatest(), [latestDate]);
+  const demandShopsy = useMemo(() => getDemandLatest("Shopsy"), [latestDate]);
+  const demandMeesho = useMemo(() => getDemandLatest("Meesho"), [latestDate]);
+
+  // Category filter list
+  const categories = useMemo(
+    () => ["All", ...Array.from(new Set(demandAll.map((r) => r.category))).sort()],
+    [demandAll]
   );
 
-  /* ---- Section 1 KPIs ---- */
-  const avgDemand = useMemo(() => avg(shopsyLatest.map((r) => r.demand_intensity_score)), [shopsyLatest]);
-  const highDemandCount = useMemo(() => shopsyLatest.filter((r) => r.demand_intensity_score > 60).length, [shopsyLatest]);
-  const criticalStockouts = useMemo(() => shopsyLatest.filter((r) => r.must_have_flag === 1 && r.stockout_flag === 1).length, [shopsyLatest]);
-  const totalLostDemand = useMemo(() => shopsyLatest.reduce((s, r) => s + r.lost_demand_proxy, 0), [shopsyLatest]);
+  // Filtered demand rows for the table
+  const displayRows = useMemo(() => {
+    let rows = platformFilter === "Both"
+      ? demandAll
+      : platformFilter === "Shopsy" ? demandShopsy : demandMeesho;
+    if (catFilter !== "All") rows = rows.filter((r) => r.category === catFilter);
+    return [...rows].sort((a, b) => b.demand_score - a.demand_score);
+  }, [demandAll, demandShopsy, demandMeesho, catFilter, platformFilter]);
 
-  /* ---- Section 2 Action Queue ---- */
+  // KPIs — Shopsy view
+  const avgDemandShopsy = useMemo(() => {
+    if (!demandShopsy.length) return 0;
+    return demandShopsy.reduce((s, r) => s + r.demand_score, 0) / demandShopsy.length;
+  }, [demandShopsy]);
+
+  const actNowCount = useMemo(
+    () => demandShopsy.filter((r) => r.action_flag === "Act Now").length,
+    [demandShopsy]
+  );
+
+  const highStockoutCount = useMemo(
+    () => demandShopsy.filter((r) => r.stockout_risk > 0.15).length,
+    [demandShopsy]
+  );
+
+  const totalLostDemand = useMemo(
+    () => demandShopsy.reduce((s, r) => s + r.lost_demand_index, 0),
+    [demandShopsy]
+  );
+
+  // Section 2 — Action queues
   const promoteThese = useMemo(() =>
-    shopsyLatest
-      .filter((r) => r.availability_flag === 1 && r.demand_intensity_score > 60 && r.price_gap_pct > 5)
-      .sort((a, b) => b.demand_intensity_score - a.demand_intensity_score)
-      .slice(0, 10)
-      .map((r) => ({ name: skuNameMap[r.sku_id] || r.sku_id, category: r.category, demand: r.demand_intensity_score, gap: r.price_gap_pct })),
-    [shopsyLatest, skuNameMap]
+    demandShopsy
+      .filter((r) => r.demand_score > 65 && r.stockout_risk < 0.15)
+      .sort((a, b) => b.demand_score - a.demand_score)
+      .slice(0, 8),
+    [demandShopsy]
   );
 
   const fixSupply = useMemo(() =>
-    shopsyLatest
-      .filter((r) => r.demand_intensity_score > 50 && r.stockout_freq_7d > 0.3)
-      .sort((a, b) => b.demand_intensity_score - a.demand_intensity_score)
-      .slice(0, 10)
-      .map((r) => ({ name: skuNameMap[r.sku_id] || r.sku_id, category: r.category, stockout: r.stockout_freq_7d, demand: r.demand_intensity_score })),
-    [shopsyLatest, skuNameMap]
+    demandShopsy
+      .filter((r) => r.demand_score > 50 && r.stockout_risk > 0.15)
+      .sort((a, b) => b.lost_demand_index - a.lost_demand_index)
+      .slice(0, 8),
+    [demandShopsy]
   );
 
-  const deprioritise = useMemo(() =>
-    shopsyLatest
-      .filter((r) => r.demand_intensity_score < 30 && r.discount_percent > 0)
-      .sort((a, b) => a.demand_intensity_score - b.demand_intensity_score)
-      .slice(0, 10)
-      .map((r) => ({ name: skuNameMap[r.sku_id] || r.sku_id, category: r.category, demand: r.demand_intensity_score, discount: r.discount_percent })),
-    [shopsyLatest, skuNameMap]
+  const hold = useMemo(() =>
+    demandShopsy
+      .filter((r) => r.demand_score < 40)
+      .sort((a, b) => a.demand_score - b.demand_score)
+      .slice(0, 8),
+    [demandShopsy]
   );
 
-  /* ---- Section 3 Stockout Heatmap ---- */
+  // Section 3 — Availability trend (avg across all subcategories per date)
+  const availTrendData = useMemo(() => {
+    return allDates.map((date) => {
+      const sRows = datasets.categoryAvailability.filter(
+        (r) => r.date === date && r.platform === "Shopsy"
+      );
+      const mRows = datasets.categoryAvailability.filter(
+        (r) => r.date === date && r.platform === "Meesho"
+      );
+      const sAvg = sRows.length ? sRows.reduce((s, r) => s + r.availability_rate, 0) / sRows.length : null;
+      const mAvg = mRows.length ? mRows.reduce((s, r) => s + r.availability_rate, 0) / mRows.length : null;
+      return {
+        date: date.slice(5),           // "MM-DD"
+        Shopsy: sAvg !== null ? +(sAvg * 100).toFixed(1) : null,
+        Meesho: mAvg !== null ? +(mAvg * 100).toFixed(1) : null,
+      };
+    });
+  }, [allDates]);
+
+  // Section 4 — Stockout risk by category
   const stockoutByCategory = useMemo(() => {
-    const map: Record<string, { shopsy: number[]; meesho: number[] }> = {};
-    datasets.demandSignals
-      .filter((r) => r.date === LATEST_DATE)
-      .forEach((r) => {
-        const e = (map[r.category] ??= { shopsy: [], meesho: [] });
-        if (r.platform === "Shopsy") e.shopsy.push(r.stockout_freq_7d);
-        if (r.platform === "Meesho") e.meesho.push(r.stockout_freq_7d);
-      });
-    return Object.entries(map)
+    const catMap: Record<string, { shopsy: number[]; meesho: number[] }> = {};
+    demandAll.forEach((r) => {
+      const entry = (catMap[r.category] ??= { shopsy: [], meesho: [] });
+      if (r.platform === "Shopsy") entry.shopsy.push(r.stockout_risk * 100);
+      else entry.meesho.push(r.stockout_risk * 100);
+    });
+    return Object.entries(catMap)
       .map(([category, v]) => ({
         category,
-        Shopsy: +(avg(v.shopsy) * 100).toFixed(1),
-        Meesho: +(avg(v.meesho) * 100).toFixed(1),
+        Shopsy: v.shopsy.length ? +(v.shopsy.reduce((a, b) => a + b, 0) / v.shopsy.length).toFixed(1) : 0,
+        Meesho: v.meesho.length ? +(v.meesho.reduce((a, b) => a + b, 0) / v.meesho.length).toFixed(1) : 0,
       }))
       .sort((a, b) => b.Shopsy - a.Shopsy);
-  }, [LATEST_DATE]);
+  }, [demandAll]);
 
-  /* ---- Section 4 Availability Trend ---- */
-  const availabilityTrend = useMemo(() => {
-    const map: Record<string, { shopsy: number[]; meesho: number[] }> = {};
-    datasets.demandSignals.forEach((r) => {
-      const e = (map[r.date] ??= { shopsy: [], meesho: [] });
-      if (r.platform === "Shopsy") e.shopsy.push(r.availability_flag);
-      if (r.platform === "Meesho") e.meesho.push(r.availability_flag);
+  // 7-day trend direction per subcategory × platform (for table)
+  const trendDirections = useMemo(() => {
+    const map: Record<string, number> = {};
+    displayRows.forEach((r) => {
+      const key = `${r.category}||${r.subcategory}||${r.platform}`;
+      map[key] = getAvailabilityTrendDirection(r.category, r.subcategory, r.platform);
     });
-    return Object.entries(map)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([d, v]) => ({
-        date: new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
-        Shopsy: +(avg(v.shopsy) * 100).toFixed(1),
-        Meesho: +(avg(v.meesho) * 100).toFixed(1),
-      }));
-  }, []);
-
-  /* ---- Section 5 Critical SKUs ---- */
-  const criticalSKUs = useMemo(() =>
-    shopsyLatest
-      .filter((r) => r.must_have_flag === 1 && r.stockout_freq_7d > 0.2)
-      .sort((a, b) => b.lost_demand_proxy - a.lost_demand_proxy)
-      .slice(0, 20)
-      .map((r) => ({
-        name: skuNameMap[r.sku_id] || r.sku_id,
-        brand: r.brand,
-        category: r.category,
-        stockout: r.stockout_freq_7d,
-        demand: r.demand_intensity_score,
-        lost: r.lost_demand_proxy,
-      })),
-    [shopsyLatest, skuNameMap]
-  );
+    return map;
+  }, [displayRows]);
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
-      <h1 className="text-lg font-semibold">Demand &amp; Availability</h1>
+      <div>
+        <h1 className="text-lg font-semibold">Demand &amp; Availability</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Subcategory-level demand intensity, stockout risk, and 7-day availability trends
+        </p>
+      </div>
 
-      {/* Section 1 */}
+      {/* ── Section 1 — KPIs ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPISimple title="Avg Demand Intensity Score" value={avgDemand.toFixed(1)} subtitle="Shopsy, latest" tooltip="Composite score (0–100) measuring how strongly a SKU is being demanded based on search rank, review velocity, and price sensitivity signals" />
-        <KPISimple title="SKUs with High Demand (>60)" value={highDemandCount.toString()} color="green" tooltip="Count of Shopsy SKUs with demand intensity score above 60, where promotional investment would have measurable impact" />
-        <KPISimple title="Critical Stockouts" value={criticalStockouts.toString()} subtitle="Must-have SKUs out of stock" color="red" tooltip="Must-have SKUs (flagged as portfolio-critical) that are currently out of stock on Shopsy" />
-        <KPISimple title="Total Lost Demand Proxy" value={totalLostDemand.toFixed(0)} color="amber" tooltip="Estimated demand units lost across all Shopsy SKUs due to stockouts. Synthetic proxy — directional only" />
+        <KPICard
+          title="Avg Demand Score (Shopsy)"
+          value={fmt1(avgDemandShopsy)}
+          subtitle="0–99 composite"
+          color={avgDemandShopsy > 65 ? "green" : "amber"}
+          tooltip="Average demand intensity score across all Shopsy subcategories on the latest date. Driven by Gen Z signal, stockout risk, and demand velocity."
+        />
+        <KPICard
+          title="Act Now Subcategories"
+          value={String(actNowCount)}
+          subtitle="high demand + high stockout"
+          color="red"
+          tooltip="Subcategories where demand score > 75 and stockout risk > 15% — requiring immediate supply or promotional action."
+        />
+        <KPICard
+          title="Elevated Stockout Risk"
+          value={String(highStockoutCount)}
+          subtitle="stockout risk > 15%"
+          color="amber"
+          tooltip="Shopsy subcategories where the stockout rate exceeds 15% on the latest date."
+        />
+        <KPICard
+          title="Lost Demand Index"
+          value={fmt1(totalLostDemand)}
+          subtitle="demand × stockout, all subcats"
+          color={totalLostDemand > 500 ? "red" : "amber"}
+          tooltip="Sum of (demand_score × stockout_risk) across all Shopsy subcategories. Directional proxy for total demand being missed due to availability gaps."
+        />
       </div>
 
-      {/* Section 2 — Action Queue */}
-      <div className="grid md:grid-cols-3 gap-4">
-        {/* Column A */}
-        <Card className="border-l-4 border-l-emerald-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Promote These</CardTitle>
-            <p className="text-[10px] text-muted-foreground">High demand, in stock, overpriced</p>
-          </CardHeader>
-          <CardContent className="space-y-1.5 max-h-[320px] overflow-y-auto">
-            {promoteThese.length === 0 ? <p className="text-xs text-muted-foreground py-4 text-center">None found</p> : promoteThese.map((r, i) => (
-              <div key={i} className="flex items-start justify-between gap-2 text-xs border-b border-border/30 pb-1.5">
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{r.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{r.category}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="font-medium tabular-nums">{r.demand.toFixed(1)}</p>
-                  <p className="text-[10px] text-red-500 dark:text-red-400 tabular-nums">+{r.gap.toFixed(1)}%</p>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+      {/* ── Section 2 — Action Queue ──────────────────────────────────── */}
+      <section>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-primary/70 mb-2">
+          Action Queue — Shopsy
+        </p>
+        <div className="grid md:grid-cols-3 gap-4">
 
-        {/* Column B */}
-        <Card className="border-l-4 border-l-amber-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Fix Supply First</CardTitle>
-            <p className="text-[10px] text-muted-foreground">High demand, frequent stockouts</p>
-          </CardHeader>
-          <CardContent className="space-y-1.5 max-h-[320px] overflow-y-auto">
-            {fixSupply.length === 0 ? <p className="text-xs text-muted-foreground py-4 text-center">None found</p> : fixSupply.map((r, i) => (
-              <div key={i} className="flex items-start justify-between gap-2 text-xs border-b border-border/30 pb-1.5">
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{r.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{r.category}</p>
+          <Card className="border-l-4 border-l-emerald-500">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Promote These</CardTitle>
+              <p className="text-[10px] text-muted-foreground">High demand · supply available · ready to push</p>
+            </CardHeader>
+            <CardContent className="space-y-2 max-h-[300px] overflow-y-auto">
+              {promoteThese.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">None found</p>
+              ) : promoteThese.map((r) => (
+                <div key={`${r.category}-${r.subcategory}`} className="flex items-start justify-between gap-2 text-xs border-b border-border/30 pb-2 last:border-0">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{r.subcategory}</p>
+                    <p className="text-[10px] text-muted-foreground">{r.category}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{fmt1(r.demand_score)}</p>
+                    <p className="text-[10px] text-muted-foreground">{(r.stockout_risk * 100).toFixed(1)}% OOS</p>
+                  </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="font-medium tabular-nums">{r.demand.toFixed(1)}</p>
-                  <p className="text-[10px] text-amber-500 dark:text-amber-400 tabular-nums">{(r.stockout * 100).toFixed(1)}% OOS</p>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+              ))}
+            </CardContent>
+          </Card>
 
-        {/* Column C */}
-        <Card className="border-l-4 border-l-muted-foreground/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Deprioritise</CardTitle>
-            <p className="text-[10px] text-muted-foreground">Low demand, currently discounted</p>
-          </CardHeader>
-          <CardContent className="space-y-1.5 max-h-[320px] overflow-y-auto">
-            {deprioritise.length === 0 ? <p className="text-xs text-muted-foreground py-4 text-center">None found</p> : deprioritise.map((r, i) => (
-              <div key={i} className="flex items-start justify-between gap-2 text-xs border-b border-border/30 pb-1.5">
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{r.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{r.category}</p>
+          <Card className="border-l-4 border-l-amber-500">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Fix Supply First</CardTitle>
+              <p className="text-[10px] text-muted-foreground">High demand · high stockout · promoting will waste spend</p>
+            </CardHeader>
+            <CardContent className="space-y-2 max-h-[300px] overflow-y-auto">
+              {fixSupply.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">None found</p>
+              ) : fixSupply.map((r) => (
+                <div key={`${r.category}-${r.subcategory}`} className="flex items-start justify-between gap-2 text-xs border-b border-border/30 pb-2 last:border-0">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{r.subcategory}</p>
+                    <p className="text-[10px] text-muted-foreground">{r.category}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-semibold tabular-nums text-amber-600 dark:text-amber-400">{fmt1(r.demand_score)}</p>
+                    <p className="text-[10px] text-red-500 dark:text-red-400 tabular-nums">{(r.stockout_risk * 100).toFixed(1)}% OOS</p>
+                  </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="font-medium text-muted-foreground tabular-nums">{r.demand.toFixed(1)}</p>
-                  <p className="text-[10px] tabular-nums">{r.discount.toFixed(1)}% off</p>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+              ))}
+            </CardContent>
+          </Card>
 
-      {/* Section 3 — Stockout by Category */}
+          <Card className="border-l-4 border-l-muted-foreground/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Hold</CardTitle>
+              <p className="text-[10px] text-muted-foreground">Low demand · conserve budget</p>
+            </CardHeader>
+            <CardContent className="space-y-2 max-h-[300px] overflow-y-auto">
+              {hold.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">None found</p>
+              ) : hold.map((r) => (
+                <div key={`${r.category}-${r.subcategory}`} className="flex items-start justify-between gap-2 text-xs border-b border-border/30 pb-2 last:border-0">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{r.subcategory}</p>
+                    <p className="text-[10px] text-muted-foreground">{r.category}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-semibold tabular-nums text-muted-foreground">{fmt1(r.demand_score)}</p>
+                    <p className="text-[10px] text-muted-foreground">{(r.stockout_risk * 100).toFixed(1)}% OOS</p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* ── Section 3 — Availability Trend ───────────────────────────── */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Stockout Frequency by Category</CardTitle>
-          <p className="text-xs text-muted-foreground">Avg 7-day stockout rate (%), Shopsy vs Meesho, latest date</p>
+          <CardTitle className="text-base">Availability Trend — Apr 2026</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Daily avg in-stock rate across all subcategories — Shopsy vs Meesho
+          </p>
+        </CardHeader>
+        <CardContent>
+          {availTrendData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={availTrendData} margin={{ left: 10, right: 20, top: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="date" fontSize={11} tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis
+                  tickFormatter={(v: number) => `${v}%`}
+                  fontSize={11}
+                  domain={[75, 95]}
+                  tick={{ fill: "hsl(var(--muted-foreground))" }}
+                />
+                <RechartsTooltip
+                  {...chartTooltipProps}
+                  formatter={(v: number) => [`${v}%`, ""]}
+                />
+                <Legend verticalAlign="top" height={28} />
+                <Line
+                  type="monotone"
+                  dataKey="Shopsy"
+                  stroke="hsl(217, 91%, 60%)"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  connectNulls
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Meesho"
+                  stroke="hsl(38, 92%, 50%)"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  connectNulls
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-muted-foreground py-8 text-center">No availability data.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Section 4 — Stockout by Category ─────────────────────────── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Stockout Risk by Category</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Avg stockout rate (%) per category — Shopsy vs Meesho, latest date. Higher = more supply risk.
+          </p>
         </CardHeader>
         <CardContent>
           {stockoutByCategory.length > 0 ? (
             <ResponsiveContainer width="100%" height={Math.max(280, stockoutByCategory.length * 34)}>
-              <BarChart data={stockoutByCategory} layout="vertical" margin={{ left: 150, right: 30, top: 5, bottom: 5 }}>
+              <BarChart
+                data={stockoutByCategory}
+                layout="vertical"
+                margin={{ left: 160, right: 40, top: 5, bottom: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" tickFormatter={(v: number) => `${v}%`} fontSize={11} />
-                <YAxis type="category" dataKey="category" width={140} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
-                <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [`${v}%`, ""]} />
+                <YAxis
+                  type="category"
+                  dataKey="category"
+                  width={150}
+                  fontSize={11}
+                  tick={{ fill: "hsl(var(--foreground))" }}
+                />
+                <RechartsTooltip
+                  {...chartTooltipProps}
+                  formatter={(v: number) => [`${v}%`, ""]}
+                />
                 <Legend verticalAlign="top" height={28} />
-                <Bar dataKey="Shopsy" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]} />
-                <Bar dataKey="Meesho" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="Shopsy" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]}>
+                  <LabelList dataKey="Shopsy" position="right" fontSize={10} formatter={(v: number) => `${v}%`} />
+                </Bar>
+                <Bar dataKey="Meesho" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]}>
+                  <LabelList dataKey="Meesho" position="right" fontSize={10} formatter={(v: number) => `${v}%`} />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -257,69 +449,173 @@ export default function DemandAvailability() {
         </CardContent>
       </Card>
 
-      {/* Section 4 — Availability Trend */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Availability Trend (Apr 2026)</CardTitle>
-          <p className="text-xs text-muted-foreground">Daily avg availability rate, Shopsy vs Meesho</p>
-        </CardHeader>
-        <CardContent>
-          {availabilityTrend.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={availabilityTrend} margin={{ left: 10, right: 20, top: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
-                <YAxis tickFormatter={(v: number) => `${v}%`} fontSize={11} domain={[60, 100]} />
-                <RechartsTooltip {...chartTooltipProps} formatter={(v: number) => [`${v}%`, ""]} />
-                <Legend verticalAlign="top" height={28} />
-                <Line type="monotone" dataKey="Shopsy" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="Meesho" stroke="hsl(38, 92%, 50%)" strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-sm text-muted-foreground py-8 text-center">No data available.</p>
-          )}
-        </CardContent>
-      </Card>
+      {/* ── Section 5 — Subcategory Demand Table ─────────────────────── */}
+      <section>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-primary/70 mb-2">
+          Subcategory Detail
+        </p>
 
-      {/* Section 5 — Critical SKUs */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Must-Have SKUs at Risk</CardTitle>
-          <p className="text-xs text-muted-foreground">Fix supply before promoting &mdash; must-have SKUs with elevated stockout frequency</p>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <div className="max-h-[480px] overflow-y-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border">
-                {["Product Name", "Brand", "Category", "Stockout Freq (7d)", "Demand Score", "Lost Demand"].map((h) => (
-                  <th key={h} className="text-left py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {criticalSKUs.length === 0 ? (
-                <tr><td colSpan={6} className="py-6 text-center text-muted-foreground">No critical SKUs found.</td></tr>
-              ) : criticalSKUs.map((r, i) => (
-                <tr key={i} className="border-b border-border/40 hover:bg-muted/30">
-                  <td className="py-1.5 px-2 max-w-[200px] truncate font-medium">{r.name}</td>
-                  <td className="py-1.5 px-2">{r.brand}</td>
-                  <td className="py-1.5 px-2">{r.category}</td>
-                  <td className="py-1.5 px-2">
-                    <Badge variant={r.stockout > 0.5 ? "destructive" : "secondary"} className="text-[10px] px-1.5 py-0 tabular-nums">
-                      {(r.stockout * 100).toFixed(1)}%
-                    </Badge>
-                  </td>
-                  <td className="py-1.5 px-2 font-medium tabular-nums">{r.demand.toFixed(1)}</td>
-                  <td className="py-1.5 px-2 font-medium text-red-600 dark:text-red-400 tabular-nums">{r.lost.toFixed(1)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {/* Category pills */}
+          {categories.map((cat) => (
+            <Button
+              key={cat}
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "rounded-full h-7 text-xs px-3",
+                catFilter === cat
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70"
+              )}
+              onClick={() => setCatFilter(cat)}
+            >
+              {cat}
+            </Button>
+          ))}
+          {/* Platform pills */}
+          <div className="flex gap-1.5 ml-2 border-l border-border pl-2">
+            {(["Both", "Shopsy", "Meesho"] as const).map((p) => (
+              <Button
+                key={p}
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "rounded-full h-7 text-xs px-3",
+                  platformFilter === p
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-muted text-muted-foreground hover:bg-muted/70"
+                )}
+                onClick={() => setPlatformFilter(p)}
+              >
+                {p}
+              </Button>
+            ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Demand &amp; Availability by Subcategory</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Sorted by demand score descending. Trend = 14-day availability direction (↑ deteriorating, ↓ improving).
+            </p>
+          </CardHeader>
+          <CardContent className="p-0 pb-2 overflow-x-auto">
+            <div className="max-h-[520px] overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b border-border bg-muted/80 backdrop-blur-sm">
+                    <th className="text-left py-2.5 pl-4 pr-2 font-medium text-muted-foreground w-[160px]">Subcategory</th>
+                    <th className="text-left py-2.5 pr-3 font-medium text-muted-foreground text-[10px]">Category</th>
+                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Platform</th>
+                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Gen Z</th>
+                    <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger className="flex items-center gap-1 mx-auto">
+                            Demand <HelpCircle className="h-3 w-3 opacity-50" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Demand intensity score 0–99. Driven by Gen Z signal, stockout pressure, and velocity.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </th>
+                    <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">Stockout %</th>
+                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger className="flex items-center gap-1 mx-auto">
+                            Avail. Trend <HelpCircle className="h-3 w-3 opacity-50" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">14-day direction of availability rate. ↑ = deteriorating (more OOS), ↓ = improving.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </th>
+                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Lost Demand</th>
+                    <th className="text-center py-2.5 pl-2 pr-4 font-medium text-muted-foreground">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center text-muted-foreground">
+                        No demand data loaded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    displayRows.map((row) => {
+                      const trendKey = `${row.category}||${row.subcategory}||${row.platform}`;
+                      const trendDir = trendDirections[trendKey] ?? 0;
+                      return (
+                        <tr
+                          key={trendKey}
+                          className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors"
+                        >
+                          <td className="py-2.5 pl-4 pr-2 font-medium">{row.subcategory}</td>
+                          <td className="py-2.5 pr-3 text-muted-foreground text-[10px]">{row.category}</td>
+                          <td className="py-2.5 px-2 text-center">
+                            <Badge
+                              variant={row.platform === "Shopsy" ? "default" : "secondary"}
+                              className="text-[10px] px-1.5 py-0"
+                            >
+                              {row.platform}
+                            </Badge>
+                          </td>
+                          <td className="py-2.5 px-2 text-center">
+                            <span className={cn("inline-block rounded px-1.5 py-0.5 text-[10px] font-medium", GENZ_PILL[row.genz_signal])}>
+                              {GENZ_LABEL[row.genz_signal]}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className={cn(
+                              "inline-block rounded px-2 py-0.5 text-xs font-semibold tabular-nums",
+                              row.demand_score > 75
+                                ? "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
+                                : row.demand_score > 55
+                                  ? "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
+                                  : "bg-muted text-muted-foreground"
+                            )}>
+                              {fmt1(row.demand_score)}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className={cn(
+                              "inline-block rounded px-2 py-0.5 text-xs font-semibold tabular-nums",
+                              row.stockout_risk > 0.20
+                                ? "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
+                                : row.stockout_risk > 0.12
+                                  ? "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
+                                  : "bg-muted text-muted-foreground"
+                            )}>
+                              {(row.stockout_risk * 100).toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-2 text-center">
+                            <div className="flex items-center justify-center">
+                              {/* For availability: ↑ stockout trending up = bad = red icon */}
+                              <TrendIcon direction={trendDir} />
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-2 text-center tabular-nums text-xs font-medium">
+                            {fmt1(row.lost_demand_index)}
+                          </td>
+                          <td className="py-2.5 pl-2 pr-4 text-center">
+                            {actionFlagBadge(row.action_flag)}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }
