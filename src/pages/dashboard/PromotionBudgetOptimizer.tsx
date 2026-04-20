@@ -133,7 +133,7 @@ function KPICard({
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ALLOCATION ENGINE
-// Takes a budget in ₹ (treated as index units matching estimated_gmv_uplift scale)
+// Takes a budget in ₹ (treated as index units matching avg_subcategory_price_inr × estimated_monthly_orders scale)
 // and greedily selects top ROI subcategories that fit
 // ─────────────────────────────────────────────────────────────────────────────
 
