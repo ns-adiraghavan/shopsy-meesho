@@ -343,7 +343,7 @@ const AnalyticsTaxonomy = () => {
           <thead>
             <tr className="bg-muted/50 border-b border-border">
               <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground w-48">KPI Name</th>
-              <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Formula</th>
+              <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Definition</th>
               <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground w-56">Dataset Source</th>
               <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground w-64">Where Used</th>
             </tr>
