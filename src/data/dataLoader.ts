@@ -446,7 +446,7 @@ export function getGenZPlatformSplit(): Array<{
       genz_signal_level: m.genz_signal,
       shopsy_score: ss,
       meesho_score: ms,
-      leading_platform: ss >= ms ? "Shopsy" : "Meesho",
+      leading_platform: (ss >= ms ? "Shopsy" : "Meesho") as Platform,
       score_gap: Math.abs(ss - ms),
     };
   }).sort((a, b) => {
