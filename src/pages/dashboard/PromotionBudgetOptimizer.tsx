@@ -156,7 +156,7 @@ function allocate(budget: number, pool: PromotionROI[]): AllocResult {
     spent += cost;
     if (spent >= budget) break;
   }
-  const totalUplift = result.reduce((s, r) => s + r.estimated_gmv_uplift, 0);
+  const totalUplift = result.reduce((s, r) => s + (r.avg_subcategory_price_inr * r.estimated_monthly_orders), 0);
   const avgROI = result.length ? result.reduce((s, r) => s + r.promotion_roi_score, 0) / result.length : 0;
   return { rows: result, totalUplift, avgROI, subcatCount: result.length };
 }
@@ -206,7 +206,7 @@ function AllocTable({ rows, label }: { rows: PromotionROI[]; label: string }) {
               </td>
               <td className="py-2 px-2 text-center">{promoBadge(r.recommended_promo_type)}</td>
               <td className="py-2 px-2 text-center tabular-nums">{fmt1(r.recommended_discount)}%</td>
-              <td className="py-2 px-2 text-center tabular-nums font-medium">{fmt1(r.estimated_gmv_uplift)}</td>
+              <td className="py-2 px-2 text-center tabular-nums font-medium">{fmt1(r.avg_subcategory_price_inr * r.estimated_monthly_orders)}</td>
               <td className="py-2 pl-2 pr-3 text-center">{priorityBadge(r.budget_priority)}</td>
             </tr>
           ))}
@@ -412,7 +412,7 @@ export default function PromotionBudgetOptimizer() {
   // Category GMV uplift chart
   const categoryUpliftData = useMemo(() => {
     const catMap: Record<string, number> = {};
-    allROI.forEach((r) => { catMap[r.category] = (catMap[r.category] ?? 0) + r.estimated_gmv_uplift; });
+    allROI.forEach((r) => { catMap[r.category] = (catMap[r.category] ?? 0) + (r.avg_subcategory_price_inr * r.estimated_monthly_orders); });
     return Object.entries(catMap)
       .map(([category, uplift]) => ({ category, uplift: +uplift.toFixed(1) }))
       .sort((a, b) => b.uplift - a.uplift);
@@ -645,7 +645,7 @@ export default function PromotionBudgetOptimizer() {
                         </td>
                         <td className="py-2.5 px-2 text-center">{promoBadge(r.recommended_promo_type)}</td>
                         <td className="py-2.5 px-2 text-center tabular-nums text-xs">{fmt1(r.recommended_discount)}%</td>
-                        <td className="py-2.5 px-2 text-center tabular-nums text-xs font-medium">{fmt1(r.estimated_gmv_uplift)}</td>
+                        <td className="py-2.5 px-2 text-center tabular-nums text-xs font-medium">{fmt1(r.avg_subcategory_price_inr * r.estimated_monthly_orders)}</td>
                         <td className="py-2.5 pl-2 pr-4 text-center">{priorityBadge(r.budget_priority)}</td>
                       </tr>
                     ))
