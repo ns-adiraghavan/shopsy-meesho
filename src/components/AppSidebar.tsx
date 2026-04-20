@@ -102,6 +102,19 @@ export function AppSidebar() {
             variant="ghost"
             size="sm"
             className="w-full justify-start gap-2"
+            asChild
+          >
+            <Link to="/analytics-taxonomy">
+              <BarChart3 className="h-4 w-4 shrink-0" />
+              {!collapsed && <span className="text-xs">Analytics Taxonomy</span>}
+            </Link>
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           >
             {theme === "dark" ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
