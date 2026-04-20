@@ -1,48 +1,98 @@
+/**
+ * DataContext.tsx — Category-First Data Provider v2.0
+ *
+ * Loads datasets from /data/*.json.gz on demand, keyed by page route.
+ * Uses a module-level cache so datasets survive route changes without re-fetching.
+ * Pages consume data via accessor functions in dataLoader.ts — never raw JSON.
+ */
+
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import pako from "pako";
 import {
   datasets,
-  SKUMaster,
-  AssortmentRecord,
-  PriceRecord,
-  AvailabilityRecord,
-  SearchRankRecord,
-  ReviewRawRecord,
-  ReviewSignalsRecord,
-  GenZTractionRecord,
-  DemandSignalsRecord,
-  PromotionROIRecord,
+  CategoryMaster,
+  CategoryPricing,
+  CategoryAvailability,
+  CategoryAssortment,
+  CategorySearch,
+  GenZSignal,
+  DemandSignal,
+  PromoCalendar,
+  PromotionROI,
   CompetitorEvent,
   PlatformSummary,
+  CategorySummary,
 } from "@/data/dataLoader";
 
-// ─── Dataset keys ──────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// DATASET KEYS
+// Maps 1-to-1 to filenames in public/data/*.json.gz
+// ─────────────────────────────────────────────────────────────────────────────
+
 export type DatasetKey =
-  | "sku_master"
-  | "assortment_tracking"
-  | "price_tracking"
-  | "availability_tracking"
-  | "search_rank_tracking"
-  | "review_raw"
-  | "review_signals"
-  | "genz_traction"
+  | "category_master"
+  | "category_pricing"
+  | "category_availability"
+  | "category_assortment"
+  | "category_search"
+  | "genz_signals"
   | "demand_signals"
+  | "promo_calendar"
   | "promotion_roi"
   | "competitor_events"
-  | "platform_summary";
+  | "platform_summary"
+  | "category_summary";
 
-// ─── Page → required datasets ─────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// PAGE → REQUIRED DATASETS
+// Each page only loads what it needs. Shared datasets (master, summary)
+// are requested by every page so they load on first navigation.
+// ─────────────────────────────────────────────────────────────────────────────
+
 const PAGE_DATASETS: Record<string, DatasetKey[]> = {
-  "/dashboard":               ["sku_master", "platform_summary", "competitor_events", "price_tracking", "assortment_tracking"],
-  "/dashboard/pricing":       ["sku_master", "price_tracking", "assortment_tracking"],
-  "/dashboard/genz":          ["sku_master", "genz_traction", "search_rank_tracking", "price_tracking", "assortment_tracking"],
-  "/dashboard/assortment":    ["sku_master", "assortment_tracking", "genz_traction"],
-  "/dashboard/demand":        ["sku_master", "demand_signals", "price_tracking"],
-  "/dashboard/budget":        ["sku_master", "promotion_roi"],
+  "/dashboard": [
+    "platform_summary",
+    "category_summary",
+    "competitor_events",
+    "category_pricing",
+    "category_master",
+  ],
+  "/dashboard/pricing": [
+    "category_master",
+    "category_pricing",
+    "promo_calendar",
+    "category_summary",
+  ],
+  "/dashboard/genz": [
+    "category_master",
+    "genz_signals",
+    "category_search",
+    "category_pricing",
+  ],
+  "/dashboard/assortment": [
+    "category_master",
+    "category_assortment",
+    "genz_signals",
+  ],
+  "/dashboard/demand": [
+    "category_master",
+    "demand_signals",
+    "category_availability",
+    "category_pricing",
+  ],
+  "/dashboard/budget": [
+    "category_master",
+    "promotion_roi",
+    "promo_calendar",
+    "category_pricing",
+  ],
 };
 
-// ─── Context ──────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTEXT
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface DataContextValue {
   loaded: boolean;
   loadedDatasets: Set<DatasetKey>;
@@ -57,15 +107,22 @@ export function useData() {
   return useContext(DataContext);
 }
 
-// ─── Module-level cache (persists across re-renders / route changes) ───────────
+// ─────────────────────────────────────────────────────────────────────────────
+// MODULE-LEVEL CACHE
+// Persists across re-renders and route changes. A dataset is never fetched twice.
+// ─────────────────────────────────────────────────────────────────────────────
+
 const fetchedDatasets = new Set<DatasetKey>();
 const fetchPromises: Partial<Record<DatasetKey, Promise<void>>> = {};
 
-// ─── Local-only gzip loader ───────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// GZIP LOADER
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function fetchGzip(key: DatasetKey): Promise<unknown[]> {
   const url = `/data/${key}.json.gz`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`[DataContext] HTTP ${res.status} loading ${url}`);
+  if (!res.ok) throw new Error(`[DataContext] HTTP ${res.status} — ${url}`);
 
   const buffer = await res.arrayBuffer();
   const bytes = new Uint8Array(buffer);
@@ -74,6 +131,7 @@ async function fetchGzip(key: DatasetKey): Promise<unknown[]> {
   try {
     text = pako.inflate(bytes, { to: "string" });
   } catch {
+    // File may not actually be gzipped — try raw decode
     text = new TextDecoder().decode(bytes);
   }
 
@@ -82,7 +140,11 @@ async function fetchGzip(key: DatasetKey): Promise<unknown[]> {
   return json;
 }
 
-// ─── Hydrate one dataset (deduplicated by promise) ────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// HYDRATE ONE DATASET
+// Deduplicates concurrent requests for the same key via promise cache.
+// ─────────────────────────────────────────────────────────────────────────────
+
 function fetchAndHydrate(key: DatasetKey): Promise<void> {
   if (fetchedDatasets.has(key)) return Promise.resolve();
 
@@ -90,35 +152,32 @@ function fetchAndHydrate(key: DatasetKey): Promise<void> {
     fetchPromises[key] = fetchGzip(key)
       .then((raw) => {
         switch (key) {
-          case "sku_master":
-            datasets.skuMaster = raw as SKUMaster[];
+          case "category_master":
+            datasets.categoryMaster = raw as CategoryMaster[];
             break;
-          case "assortment_tracking":
-            datasets.assortmentTracking = raw as AssortmentRecord[];
+          case "category_pricing":
+            datasets.categoryPricing = raw as CategoryPricing[];
             break;
-          case "price_tracking":
-            datasets.priceTracking = raw as PriceRecord[];
+          case "category_availability":
+            datasets.categoryAvailability = raw as CategoryAvailability[];
             break;
-          case "availability_tracking":
-            datasets.availabilityTracking = raw as AvailabilityRecord[];
+          case "category_assortment":
+            datasets.categoryAssortment = raw as CategoryAssortment[];
             break;
-          case "search_rank_tracking":
-            datasets.searchRankTracking = raw as SearchRankRecord[];
+          case "category_search":
+            datasets.categorySearch = raw as CategorySearch[];
             break;
-          case "review_raw":
-            datasets.reviewRaw = raw as ReviewRawRecord[];
-            break;
-          case "review_signals":
-            datasets.reviewSignals = raw as ReviewSignalsRecord[];
-            break;
-          case "genz_traction":
-            datasets.genzTraction = raw as GenZTractionRecord[];
+          case "genz_signals":
+            datasets.genzSignals = raw as GenZSignal[];
             break;
           case "demand_signals":
-            datasets.demandSignals = raw as DemandSignalsRecord[];
+            datasets.demandSignals = raw as DemandSignal[];
+            break;
+          case "promo_calendar":
+            datasets.promoCalendar = raw as PromoCalendar[];
             break;
           case "promotion_roi":
-            datasets.promotionROI = raw as PromotionROIRecord[];
+            datasets.promotionROI = raw as PromotionROI[];
             break;
           case "competitor_events":
             datasets.competitorEvents = raw as CompetitorEvent[];
@@ -126,10 +185,14 @@ function fetchAndHydrate(key: DatasetKey): Promise<void> {
           case "platform_summary":
             datasets.platformSummary = raw as PlatformSummary[];
             break;
+          case "category_summary":
+            datasets.categorySummary = raw as CategorySummary[];
+            break;
         }
         fetchedDatasets.add(key);
       })
       .catch((err) => {
+        // Remove promise from cache so it can be retried
         delete (fetchPromises as Record<string, unknown>)[key];
         throw err;
       });
@@ -138,17 +201,23 @@ function fetchAndHydrate(key: DatasetKey): Promise<void> {
   return fetchPromises[key] as Promise<void>;
 }
 
-// ─── Provider ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// PROVIDER
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [loaded, setLoaded] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
-  const [loadedDatasets, setLoadedDatasets] = useState<Set<DatasetKey>>(new Set(fetchedDatasets));
+  const [loadedDatasets, setLoadedDatasets] = useState<Set<DatasetKey>>(
+    new Set(fetchedDatasets)
+  );
   const prevPathRef = useRef<string | null>(null);
 
   const loadForPage = useCallback(async (pathname: string) => {
     const required = PAGE_DATASETS[pathname] ?? [];
 
+    // All already loaded — skip network entirely
     if (required.every((k) => fetchedDatasets.has(k))) {
       setLoaded(true);
       return;
@@ -180,6 +249,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     loadForPage(pathname);
   }, [location.pathname, loadForPage]);
 
+  // ── Loading screen ──────────────────────────────────────────────────────────
   if (!loaded) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -194,7 +264,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   return (
     <DataContext.Provider value={{ loaded, loadedDatasets }}>
       {errors.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-50 max-w-sm space-y-1">
+        <div className="fixed bottom-4 right-4 z-50 max-w-sm space-y-2">
           {errors.map((key) => (
             <div
               key={key}
