@@ -7,10 +7,31 @@ import { Button } from "@/components/ui/button";
 
 const MODULES = [
   {
+    icon: Activity,
+    label: "Promotion Budget Optimizer",
+    path: "/dashboard/budget",
+    kpis: ["ROI Score", "GMV Uplift (Est.)", "Budget Utilisation", "Promo Type Mix"],
+    description: "Promotion budget optimizer with SKU-level GMV uplift estimates.",
+  },
+  {
+    icon: CheckCircle2,
+    label: "Demand & Availability",
+    path: "/dashboard/demand",
+    kpis: ["Demand Score", "Stockout Risk", "Lost Demand Proxy", "Must-Have Health"],
+    description: "Demand intensity signals and stockout risk tracking for supply-side prioritisation.",
+  },
+  {
+    icon: Search,
+    label: "Gen Z Demand Signals",
+    path: "/dashboard/genz",
+    kpis: ["Trending SKUs", "Gen Z Score", "Keyword Rank", "Review Velocity"],
+    description: "Gen Z traction scoring powered by keyword rank and review velocity on Meesho.",
+  },
+  {
     icon: LayoutDashboard,
     label: "Competitive Overview",
     path: "/dashboard",
-    kpis: ["Composite Score", "Price Gap %", "Promo Intensity", "Availability Rate"],
+    kpis: ["Unanswered Promos", "Avg Price Gap", "Active Promo Rate", "Top ROI Subcategories", "Gen Z Traction", "Availability Rate"],
     description: "Side-by-side Shopsy vs Meesho scorecard with category pressure map and event feed.",
   },
   {
@@ -21,32 +42,11 @@ const MODULES = [
     description: "Price gap tracking across 600 SKUs in Fashion, Beauty & Accessories.",
   },
   {
-    icon: Search,
-    label: "Gen Z Demand Signals",
-    path: "/dashboard/genz",
-    kpis: ["Trending SKUs", "Gen Z Score", "Keyword Rank", "Review Velocity"],
-    description: "Gen Z traction scoring powered by keyword rank and review velocity on Meesho.",
-  },
-  {
     icon: Package,
     label: "Assortment Intelligence",
     path: "/dashboard/assortment",
-    kpis: ["SKU Coverage %", "Gap Brands", "Quick-Add Candidates", "Category Depth"],
+    kpis: ["SKU Coverage %", "Gap Brands", "Category Depth"],
     description: "Assortment gap analysis with quick-add candidate identification across platforms.",
-  },
-  {
-    icon: CheckCircle2,
-    label: "Demand & Availability",
-    path: "/dashboard/demand",
-    kpis: ["Demand Score", "Stockout Risk", "Lost Demand Proxy", "Must-Have Health"],
-    description: "Demand intensity signals and stockout risk tracking for supply-side prioritisation.",
-  },
-  {
-    icon: Activity,
-    label: "Promotion Budget Optimizer",
-    path: "/dashboard/budget",
-    kpis: ["ROI Score", "GMV Uplift (Est.)", "Budget Utilisation", "Promo Type Mix"],
-    description: "Promotion budget optimizer with SKU-level GMV uplift estimates.",
   },
 ];
 
