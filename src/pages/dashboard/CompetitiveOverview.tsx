@@ -103,14 +103,11 @@ function DualKPICard({
 // Source: category_summary.unanswered_campaign_days (pre-computed in generator).
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Extend CategorySummary with v3 field — remove cast once dataLoader.ts is updated
-interface CategorySummaryV3 extends CategorySummary {
-  unanswered_campaign_days?: number;
-}
+// CategorySummary now includes unanswered_campaign_days from dataLoader.ts
 
 function UnansweredPromosKPI() {
   const data = useMemo(() => {
-    const rows = getCategoryPressureMatrix() as CategorySummaryV3[];
+    const rows = getCategoryPressureMatrix();
 
     const totalUnanswered = rows.reduce(
       (sum, r) => sum + (r.unanswered_campaign_days ?? 0),
@@ -121,7 +118,7 @@ function UnansweredPromosKPI() {
       (r) => (r.unanswered_campaign_days ?? 0) > 0
     ).length;
 
-    const worst = rows.reduce<CategorySummaryV3 | null>((prev, cur) => {
+    const worst = rows.reduce<CategorySummary | null>((prev, cur) => {
       if (!prev) return cur;
       return (cur.unanswered_campaign_days ?? 0) > (prev.unanswered_campaign_days ?? 0)
         ? cur : prev;
