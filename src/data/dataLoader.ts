@@ -152,7 +152,10 @@ export interface PromotionROI {
   promotion_roi_score: number;     // 0 – 100 composite
   recommended_promo_type: string;
   recommended_discount: number;
-  estimated_gmv_uplift: number;
+  avg_subcategory_price_inr: number;
+  estimated_monthly_orders: number;
+  orders_at_risk: number;
+  orders_at_risk_label: string;
   budget_priority: BudgetPriority;
 }
 
@@ -200,6 +203,7 @@ export interface CategorySummary {
   meesho_depth_score: number;
   category_gmv_weight: number;
   competitive_pressure: CompetitivePressure;
+  unanswered_campaign_days: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
