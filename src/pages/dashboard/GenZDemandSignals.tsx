@@ -63,6 +63,23 @@ const SIGNAL_ORDER: Record<GenZSignalLevel, number> = {
   very_high: 0, high: 1, moderate: 2, low: 3,
 };
 
+// Category-level search keywords (from gen script CATEGORY_KEYWORDS)
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  "Women's Ethnic Wear":       ["saree online","cotton kurti","kurta set women","lehenga choli","anarkali suit","ethnic set","palazzo kurta","sharara set","indian dress women","kurti festive"],
+  "Women's Western Wear":      ["coord set women","oversized tshirt","bodycon dress","crop top","midi dress","baggy jeans women","co-ord set trendy","western dress","jumpsuit women","tops tunics"],
+  "Men's Fashion":             ["oversized tshirt men","casual shirt men","slim fit jeans","cargo pants","polo tshirt","men ethnic kurta","graphic tee","hoodie men","men formal shirt","chino trousers"],
+  "Home & Kitchen":            ["kitchen organiser","chopper vegetable","storage containers","bedsheet set","wall stickers aesthetic","cookware set","pressure cooker","kitchen gadgets","curtains home","home decor"],
+  "Beauty & Personal Care":    ["face serum","vitamin c serum","sunscreen spf50","kajal eyeliner","lipstick combo","hair oil","mamaearth serum","korean skincare","hair serum","makeup kit"],
+  "Jewellery & Accessories":   ["oxidised earrings","jhumka earrings","artificial jewellery set","handbag women","sling bag","smartwatch","sunglasses women","bangles set","necklace set","hair accessories"],
+  "Electronics & Accessories": ["wireless earbuds","bluetooth speaker","mobile cover","gaming headset","mechanical keyboard","power bank","tempered glass","laptop bag","earphones","smartwatch fitness"],
+  "Footwear":                  ["sneakers men","sports shoes","heels women","juttis ethnic","sandals women","campus shoes","formal shoes men","slippers men","running shoes","ethnic footwear"],
+  "Kids & Baby":               ["baby romper","kids frock","boys tshirt","girls ethnic dress","baby care kit","kids kurta","soft toy","school bag","baby blanket","toddler dress"],
+  "Innerwear & Nightwear":     ["bra padded","women brief","night suit","ladies innerwear set","lounge pants","bralette","men vest","boxer shorts","pyjama set","sleep wear"],
+};
+
+const LEADERBOARD_PREVIEW  = 10;
+const RESPONSE_GAP_PREVIEW = 8;
+
 function trendBadge(label: string) {
   switch (label) {
     case "Trending":
@@ -152,7 +169,9 @@ function KPICard({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function GenZDemandSignals() {
-  const [catFilter, setCatFilter] = useState("All");
+  const [catFilter, setCatFilter]             = useState("All");
+  const [showAllLeaderboard, setShowAllLeaderboard] = useState(false);
+  const [showAllResponse, setShowAllResponse]       = useState(false);
 
   const latestDate = getLatestDate();
 
@@ -338,7 +357,7 @@ export default function GenZDemandSignals() {
             </p>
           </CardHeader>
           <CardContent className="p-0 pb-2 overflow-x-auto">
-            <div className="max-h-[520px] overflow-y-auto">
+            <div>
               <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-border bg-muted/80 backdrop-blur-sm">
@@ -348,29 +367,30 @@ export default function GenZDemandSignals() {
                     <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Shopsy Score</th>
                     <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Meesho Score</th>
                     <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Leader</th>
-                    <th className="text-center py-2.5 pl-2 pr-4 font-medium text-muted-foreground">
+                    <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">
                       <TooltipProvider>
                         <Tooltip>
-                          <TooltipTrigger className="flex items-center gap-1 mx-auto">
+                          <TooltipTrigger className="flex items-center gap-1 mx-auto cursor-default">
                             Gap <HelpCircle className="h-3 w-3 opacity-50" />
                           </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">Absolute difference between Shopsy and Meesho Gen Z scores.</p>
+                          <TooltipContent className="max-w-[200px]">
+                            <p className="text-xs">How far Shopsy's Gen Z traction trails or leads Meesho in this subcategory. Positive = Meesho leads.</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </th>
+                    <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Trending Keywords</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredSplit.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                      <td colSpan={8} className="py-8 text-center text-muted-foreground">
                         No Gen Z signal data loaded yet.
                       </td>
                     </tr>
                   ) : (
-                    filteredSplit.map((row) => (
+                    (showAllLeaderboard ? filteredSplit : filteredSplit.slice(0, LEADERBOARD_PREVIEW)).map((row) => (
                       <tr
                         key={`${row.category}-${row.subcategory}`}
                         className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors"
@@ -392,7 +412,7 @@ export default function GenZDemandSignals() {
                             {row.leading_platform}
                           </Badge>
                         </td>
-                        <td className="py-2.5 pl-2 pr-4 text-center">
+                        <td className="py-2.5 px-3 text-center">
                           <span className={cn(
                             "inline-block rounded px-2 py-0.5 text-xs font-semibold tabular-nums",
                             row.score_gap > 8
@@ -404,12 +424,28 @@ export default function GenZDemandSignals() {
                             {row.score_gap.toFixed(1)}
                           </span>
                         </td>
+                        <td className="py-2 px-3">
+                          <div className="flex flex-wrap gap-1">
+                            {(CATEGORY_KEYWORDS[row.category] ?? []).slice(0, 3).map((kw) => (
+                              <span key={kw} className="inline-block rounded-full bg-muted text-muted-foreground text-[9px] px-1.5 py-0.5 whitespace-nowrap">
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
+            {filteredSplit.length > LEADERBOARD_PREVIEW && (
+              <div className="px-4 pt-3 pb-1">
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7" onClick={() => setShowAllLeaderboard(v => !v)}>
+                  {showAllLeaderboard ? "Show fewer" : `Show all ${filteredSplit.length} subcategories`}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </section>
@@ -531,7 +567,7 @@ export default function GenZDemandSignals() {
                   </tr>
                 </thead>
                 <tbody>
-                  {responseGaps.map((row) => (
+                  {(showAllResponse ? responseGaps : responseGaps.slice(0, RESPONSE_GAP_PREVIEW)).map((row) => (
                     <tr
                       key={`${row.category}-${row.subcategory}`}
                       className="border-b border-border/40 last:border-0 hover:bg-muted/20"
@@ -579,6 +615,13 @@ export default function GenZDemandSignals() {
                   ))}
                 </tbody>
               </table>
+              {responseGaps.length > RESPONSE_GAP_PREVIEW && (
+                <div className="pt-3 pb-1">
+                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7" onClick={() => setShowAllResponse(v => !v)}>
+                    {showAllResponse ? "Show fewer" : `Show all ${responseGaps.length} subcategories`}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </section>

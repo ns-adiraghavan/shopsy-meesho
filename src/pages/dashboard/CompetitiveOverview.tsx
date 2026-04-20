@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HelpCircle, AlertTriangle, AlertCircle, Info, TrendingUp, Zap, Tag, Package, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -557,6 +558,8 @@ export default function CompetitiveOverview() {
   const shopsy = getPlatformSummaryFor("Shopsy");
   const meesho = getPlatformSummaryFor("Meesho");
   const pressureRows = getCategoryPressureMatrix();
+  const [showAllEvents, setShowAllEvents] = useState(false);
+  const EVENTS_PREVIEW = 8;
 
   const events = useMemo(() => {
     return getEvents().sort((a, b) => {
@@ -604,7 +607,7 @@ export default function CompetitiveOverview() {
             shopsyValue={s ? fmt1(s.avg_genz_traction) : "—"}
             meeshoValue={m ? fmt1(m.avg_genz_traction) : "—"}
             shopsyHighlight={s && m ? (s.avg_genz_traction >= m.avg_genz_traction ? "green" : "amber") : "none"}
-            subtitle="Avg score 0–100"
+            subtitle="avg across subcategories"
             tooltip="Average Gen Z traction score across all subcategories. Higher = stronger Gen Z engagement on that platform."
           />
 
@@ -686,13 +689,13 @@ export default function CompetitiveOverview() {
             </p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+            <div className="space-y-2">
               {events.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">
                   No events loaded yet.
                 </p>
               ) : (
-                events.map((evt, i) => (
+                (showAllEvents ? events : events.slice(0, EVENTS_PREVIEW)).map((evt, i) => (
                   <div
                     key={`${evt.date}-${evt.category}-${evt.subcategory}-${i}`}
                     className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 hover:bg-muted/40 transition-colors"
@@ -723,6 +726,13 @@ export default function CompetitiveOverview() {
                 ))
               )}
             </div>
+            {events.length > EVENTS_PREVIEW && (
+              <div className="pt-3">
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7" onClick={() => setShowAllEvents(v => !v)}>
+                  {showAllEvents ? "Show fewer" : `Show all ${events.length} events`}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </section>

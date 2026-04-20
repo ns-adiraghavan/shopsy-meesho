@@ -132,6 +132,8 @@ function KPICard({
 export default function AssortmentIntelligence() {
   const [catFilter, setCatFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState<"All" | AssortmentPriority>("All");
+  const [showAllTable, setShowAllTable] = useState(false);
+  const TABLE_PREVIEW = 10;
 
   const latestDate = getLatestDate();
 
@@ -249,9 +251,9 @@ export default function AssortmentIntelligence() {
         <KPICard
           title="High Priority Gaps"
           value={String(highPriorityCount)}
-          subtitle="high Gen Z + depth gap > 0.25"
+          subtitle="high Gen Z demand, thin Shopsy listing"
           color="amber"
-          tooltip="High/Very High Gen Z subcategories where Shopsy depth gap vs Meesho exceeds 0.25 — highest actionability."
+          tooltip="High or Very High Gen Z subcategories where Shopsy's catalogue is materially thinner than Meesho's — the cases where a listing gap is most likely to cost sales."
         />
         <KPICard
           title="Avg Depth Ratio"
@@ -385,7 +387,7 @@ export default function AssortmentIntelligence() {
           </p>
         </CardHeader>
         <CardContent className="p-0 pb-2 overflow-x-auto">
-          <div className="max-h-[480px] overflow-y-auto">
+          <div>
             <table className="w-full text-xs">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b border-border bg-muted/80 backdrop-blur-sm">
@@ -399,7 +401,7 @@ export default function AssortmentIntelligence() {
                           Shopsy Depth <HelpCircle className="h-3 w-3 opacity-50" />
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p className="text-xs">Shopsy listing depth score (0–1 relative index). 1.0 = maximum observed depth.</p>
+                          <p className="text-xs">Shopsy's catalogue coverage in this subcategory as a % of Meesho's. 100% = parity; below 70% = materially under-assorted.</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -428,7 +430,7 @@ export default function AssortmentIntelligence() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((row) => (
+                  (showAllTable ? filtered : filtered.slice(0, TABLE_PREVIEW)).map((row) => (
                     <tr
                       key={`${row.category}-${row.subcategory}`}
                       className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors"
@@ -441,10 +443,10 @@ export default function AssortmentIntelligence() {
                         </span>
                       </td>
                       <td className="py-2.5 px-3 text-center font-semibold tabular-nums">
-                        {row.shopsy_depth_score.toFixed(2)}
+                        {row.meesho_depth_score > 0 ? Math.round((row.shopsy_depth_score / row.meesho_depth_score) * 100) + "%" : "—"}
                       </td>
                       <td className="py-2.5 px-3 text-center font-semibold tabular-nums text-muted-foreground">
-                        {row.meesho_depth_score.toFixed(2)}
+                        {Math.round(row.meesho_depth_score * 100) + "%"}
                       </td>
                       <td className="py-2.5 px-2 text-center">
                         <span className={cn("inline-block rounded px-2 py-0.5 text-xs font-semibold tabular-nums", depthRatioBg(row.depth_ratio))}>
@@ -460,6 +462,13 @@ export default function AssortmentIntelligence() {
               </tbody>
             </table>
           </div>
+          {filtered.length > TABLE_PREVIEW && (
+            <div className="px-4 pt-3 pb-1">
+              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7" onClick={() => setShowAllTable(v => !v)}>
+                {showAllTable ? "Show fewer" : `Show all ${filtered.length} subcategories`}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -468,7 +477,7 @@ export default function AssortmentIntelligence() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Category Assortment Depth</CardTitle>
           <p className="text-xs text-muted-foreground">
-            Average listing depth score per category — Shopsy vs Meesho (0–1 relative index). Sorted by Meesho depth descending.
+            Average listing depth per category — Shopsy vs Meesho. Higher = broader catalogue coverage in that category.
           </p>
         </CardHeader>
         <CardContent>

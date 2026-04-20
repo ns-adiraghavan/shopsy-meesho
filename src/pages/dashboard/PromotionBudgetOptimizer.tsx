@@ -1,13 +1,16 @@
 /**
- * PromotionBudgetOptimizer.tsx — v2.0 Category-First
+ * PromotionBudgetOptimizer.tsx — v3.0
  *
- * Layout:
- *   Section 1 — Budget input + Scenario A vs B split (two budget inputs, two outputs)
- *   Section 2 — Flagged subcategories imported from Pricing page (UI state via localStorage stub)
- *   Section 3 — ROI leaderboard table (all subcategories ranked)
- *   Section 4 — Promotion Calendar — 14-day timeline showing Meesho vs Shopsy promo activity
- *   Section 5 — Category GMV uplift potential bar chart
- *   Section 6 — Recommended promo type mix donut
+ * Changes from v2:
+ *   - GMV Uplift index removed everywhere (column, KPI cards, bar chart)
+ *   - Scenario KPI cards now show Avg ROI Score + Subcategories Covered
+ *   - ROI Leaderboard renamed "Subcategory Priority Queue"
+ *   - Score description is plain English, not a formula
+ *   - Each leaderboard row has an inline "Why?" expander showing 4 component signals
+ *   - Table collapsed to 8 rows by default, "Show all" toggle
+ *   - Category bar chart shows avg ROI score per category, not GMV index sum
+ *   - Budget inputs labelled in Rs Lakhs (relative, not index units)
+ *   - Promo Calendar collapsed to 15 rows by default with Show all toggle
  */
 
 import { useMemo, useState } from "react";
@@ -17,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { HelpCircle, Flag, Calendar, Zap } from "lucide-react";
+import { HelpCircle, Calendar, Zap, ChevronDown, ChevronRight } from "lucide-react";
 import { chartTooltipProps } from "@/lib/chartStyles";
 import {
   PieChart,
@@ -44,7 +47,7 @@ import {
 } from "@/data/dataLoader";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
+// CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS = [
@@ -67,6 +70,13 @@ const GENZ_LABEL: Record<GenZSignalLevel, string> = {
   very_high: "Very High", high: "High", moderate: "Moderate", low: "Low",
 };
 
+const DEFAULT_TABLE_ROWS = 8;
+const DEFAULT_CAL_ROWS   = 15;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BADGE HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
 function priorityBadge(p: BudgetPriority) {
   switch (p) {
     case "P1 — Act Now":
@@ -81,14 +91,49 @@ function priorityBadge(p: BudgetPriority) {
 function promoBadge(type: string) {
   switch (type) {
     case "Flash Sale":
-      return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">🔥 Flash Sale</Badge>;
+      return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Flash Sale</Badge>;
     case "Coupon":
-      return <Badge className="bg-amber-500/90 hover:bg-amber-500 text-white text-[10px] px-1.5 py-0">🎟 Coupon</Badge>;
+      return <Badge className="bg-amber-500/90 hover:bg-amber-500 text-white text-[10px] px-1.5 py-0">Coupon</Badge>;
     case "Bundle":
-      return <Badge className="bg-violet-500/90 hover:bg-violet-500 text-white text-[10px] px-1.5 py-0">📦 Bundle</Badge>;
+      return <Badge className="bg-violet-500/90 hover:bg-violet-500 text-white text-[10px] px-1.5 py-0">Bundle</Badge>;
     default:
-      return <Badge className="bg-blue-500/90 hover:bg-blue-500 text-white text-[10px] px-1.5 py-0">🏷 {type}</Badge>;
+      return <Badge className="bg-blue-500/90 hover:bg-blue-500 text-white text-[10px] px-1.5 py-0">{type}</Badge>;
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WHY SUMMARY — plain-English explanation of score drivers
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildWhySummary(r: PromotionROI): string {
+  const parts: string[] = [];
+
+  if (r.avg_price_gap_pct > 8)
+    parts.push(`Shopsy is priced ${fmt1(r.avg_price_gap_pct)}% above Meesho — strong case to close the gap`);
+  else if (r.avg_price_gap_pct > 0)
+    parts.push(`Shopsy is ${fmt1(r.avg_price_gap_pct)}% more expensive than Meesho`);
+  else
+    parts.push(`Shopsy is price-competitive (${fmt1(Math.abs(r.avg_price_gap_pct))}% below Meesho)`);
+
+  const promoRate = Math.round(r.meesho_promo_rate * 100);
+  if (promoRate >= 60)
+    parts.push(`Meesho is promoting aggressively (${promoRate}% of days active)`);
+  else if (promoRate >= 30)
+    parts.push(`Meesho is promoting on ${promoRate}% of days`);
+  else
+    parts.push(`Meesho promo pressure is low (${promoRate}% of days)`);
+
+  parts.push(`Gen Z signal: ${GENZ_LABEL[r.genz_signal]}`);
+
+  const avail = Math.round(r.shopsy_availability * 100);
+  if (avail >= 85)
+    parts.push(`Shopsy availability is healthy (${avail}%) — ready to absorb promotional traffic`);
+  else if (avail >= 75)
+    parts.push(`Shopsy availability is moderate (${avail}%) — some stockout risk during a promotion`);
+  else
+    parts.push(`Shopsy availability is low (${avail}%) — resolve stock before promoting`);
+
+  return parts.join(" · ");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -133,36 +178,33 @@ function KPICard({
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ALLOCATION ENGINE
-// Takes a budget in ₹ (treated as index units matching avg_subcategory_price_inr × estimated_monthly_orders scale)
-// and greedily selects top ROI subcategories that fit
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface AllocResult {
   rows: PromotionROI[];
-  totalUplift: number;
   avgROI: number;
   subcatCount: number;
 }
 
 function allocate(budget: number, pool: PromotionROI[]): AllocResult {
-  if (budget <= 0) return { rows: [], totalUplift: 0, avgROI: 0, subcatCount: 0 };
+  if (budget <= 0) return { rows: [], avgROI: 0, subcatCount: 0 };
   let spent = 0;
   const result: PromotionROI[] = [];
   for (const r of pool) {
-    // cost proxy: recommended_discount × avg price midpoint (relative units)
     const cost = r.recommended_discount * 10;
     if (spent + cost > budget) continue;
     result.push(r);
     spent += cost;
     if (spent >= budget) break;
   }
-  const totalUplift = result.reduce((s, r) => s + (r.avg_subcategory_price_inr * r.estimated_monthly_orders), 0);
-  const avgROI = result.length ? result.reduce((s, r) => s + r.promotion_roi_score, 0) / result.length : 0;
-  return { rows: result, totalUplift, avgROI, subcatCount: result.length };
+  const avgROI = result.length
+    ? result.reduce((s, r) => s + r.promotion_roi_score, 0) / result.length
+    : 0;
+  return { rows: result, avgROI, subcatCount: result.length };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ALLOCATION TABLE
+// ALLOCATION TABLE (compact — used inside scenario cards)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function AllocTable({ rows, label }: { rows: PromotionROI[]; label: string }) {
@@ -182,7 +224,6 @@ function AllocTable({ rows, label }: { rows: PromotionROI[]; label: string }) {
             <th className="text-center py-2 px-2 font-medium text-muted-foreground">ROI Score</th>
             <th className="text-center py-2 px-2 font-medium text-muted-foreground">Promo Type</th>
             <th className="text-center py-2 px-2 font-medium text-muted-foreground">Discount</th>
-            <th className="text-center py-2 px-2 font-medium text-muted-foreground">GMV Uplift</th>
             <th className="text-center py-2 pl-2 pr-3 font-medium text-muted-foreground">Priority</th>
           </tr>
         </thead>
@@ -206,26 +247,170 @@ function AllocTable({ rows, label }: { rows: PromotionROI[]; label: string }) {
               </td>
               <td className="py-2 px-2 text-center">{promoBadge(r.recommended_promo_type)}</td>
               <td className="py-2 px-2 text-center tabular-nums">{fmt1(r.recommended_discount)}%</td>
-              <td className="py-2 px-2 text-center tabular-nums font-medium">{fmt1(r.avg_subcategory_price_inr * r.estimated_monthly_orders)}</td>
               <td className="py-2 pl-2 pr-3 text-center">{priorityBadge(r.budget_priority)}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="text-[10px] text-muted-foreground mt-2 px-3 italic">
-        GMV uplift is a relative index for prioritisation — not absolute ₹ revenue.
-      </p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRIORITY QUEUE TABLE — full leaderboard with inline Why? expander
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PriorityQueueTable({ rows }: { rows: PromotionROI[] }) {
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+
+  const displayed = showAll ? rows : rows.slice(0, DEFAULT_TABLE_ROWS);
+
+  function toggleRow(key: string) {
+    setExpandedKey((prev) => (prev === key ? null : key));
+  }
+
+  if (!rows.length) return (
+    <p className="text-sm text-muted-foreground text-center py-8">No ROI data loaded yet.</p>
+  );
+
+  return (
+    <div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b border-border bg-muted/80 backdrop-blur-sm">
+              {/* chevron col */}
+              <th className="w-6 py-2.5 pl-4" />
+              <th className="text-left py-2.5 pr-2 font-medium text-muted-foreground w-[160px]">Subcategory</th>
+              <th className="text-left py-2.5 pr-3 font-medium text-muted-foreground text-[10px]">Category</th>
+              <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Gen Z</th>
+              <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger className="flex items-center gap-1 mx-auto cursor-default">
+                      ROI Score <HelpCircle className="h-3 w-3 opacity-50" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[260px]">
+                      <p className="text-xs">
+                        How strongly we recommend promoting this subcategory now — based on Shopsy's
+                        price gap vs Meesho, Meesho's promo intensity, Gen Z demand, and Shopsy's
+                        stock position. Click any row for the plain-English reasoning.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </th>
+              <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Price Gap</th>
+              <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Meesho Promo</th>
+              <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Shopsy Avail.</th>
+              <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Rec. Promo</th>
+              <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Disc. %</th>
+              <th className="text-center py-2.5 pl-2 pr-4 font-medium text-muted-foreground">Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayed.map((r) => {
+              const key = `${r.category}-${r.subcategory}`;
+              const isOpen = expandedKey === key;
+              return (
+                <>
+                  <tr
+                    key={key}
+                    className={cn(
+                      "border-b border-border/40 hover:bg-muted/20 transition-colors cursor-pointer select-none",
+                      isOpen && "bg-muted/30 border-border/60"
+                    )}
+                    onClick={() => toggleRow(key)}
+                  >
+                    <td className="py-2.5 pl-4 pr-1 text-muted-foreground">
+                      {isOpen
+                        ? <ChevronDown className="h-3.5 w-3.5" />
+                        : <ChevronRight className="h-3.5 w-3.5" />}
+                    </td>
+                    <td className="py-2.5 pr-2 font-medium">{r.subcategory}</td>
+                    <td className="py-2.5 pr-3 text-muted-foreground text-[10px]">{r.category}</td>
+                    <td className="py-2.5 px-2 text-center">
+                      <span className={cn("inline-block rounded px-1.5 py-0.5 text-[10px] font-medium", GENZ_PILL[r.genz_signal])}>
+                        {GENZ_LABEL[r.genz_signal]}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-2 text-center">
+                      <span className={cn(
+                        "inline-block rounded px-2 py-0.5 text-xs font-bold tabular-nums",
+                        r.promotion_roi_score > 70
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                          : r.promotion_roi_score > 50
+                            ? "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
+                            : "bg-muted text-muted-foreground"
+                      )}>
+                        {fmt1(r.promotion_roi_score)}
+                      </span>
+                    </td>
+                    <td className={cn(
+                      "py-2.5 px-2 text-center tabular-nums text-xs font-medium",
+                      r.avg_price_gap_pct > 8  ? "text-red-600 dark:text-red-400" :
+                      r.avg_price_gap_pct > 0  ? "text-amber-600 dark:text-amber-400" :
+                                                  "text-emerald-600 dark:text-emerald-400"
+                    )}>
+                      {r.avg_price_gap_pct > 0 ? "+" : ""}{fmt1(r.avg_price_gap_pct)}%
+                    </td>
+                    <td className="py-2.5 px-2 text-center tabular-nums text-xs">
+                      {(r.meesho_promo_rate * 100).toFixed(0)}%
+                    </td>
+                    <td className={cn(
+                      "py-2.5 px-2 text-center tabular-nums text-xs",
+                      r.shopsy_availability < 0.75 ? "text-red-600 dark:text-red-400" :
+                      r.shopsy_availability < 0.85 ? "text-amber-600 dark:text-amber-400" : ""
+                    )}>
+                      {(r.shopsy_availability * 100).toFixed(0)}%
+                    </td>
+                    <td className="py-2.5 px-2 text-center">{promoBadge(r.recommended_promo_type)}</td>
+                    <td className="py-2.5 px-2 text-center tabular-nums text-xs">{fmt1(r.recommended_discount)}%</td>
+                    <td className="py-2.5 pl-2 pr-4 text-center">{priorityBadge(r.budget_priority)}</td>
+                  </tr>
+
+                  {isOpen && (
+                    <tr key={`${key}-why`} className="border-b border-border/40 bg-muted/20">
+                      <td colSpan={11} className="px-8 py-3">
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          <span className="font-semibold text-foreground">Why this ranking? </span>
+                          {buildWhySummary(r)}
+                        </p>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {rows.length > DEFAULT_TABLE_ROWS && (
+        <div className="px-4 pt-3 pb-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs text-muted-foreground h-7"
+            onClick={() => setShowAll((v) => !v)}
+          >
+            {showAll ? "Show fewer" : `Show all ${rows.length} subcategories`}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROMO CALENDAR
-// 14-day horizontal timeline showing promo activity per subcategory × platform
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PromoCalendar() {
-  const [calCat, setCalCat] = useState("All");
+  const [calCat, setCalCat]       = useState("All");
+  const [calShowAll, setCalShowAll] = useState(false);
+
   const allDates    = getAllDates();
   const calendarRaw = useMemo(() => getPromoCalendarAll(), []);
 
@@ -234,7 +419,6 @@ function PromoCalendar() {
     [calendarRaw]
   );
 
-  // Build a matrix: subcategory × date → { shopsy: active, meesho: active, campaign }
   const subcats = useMemo(() => {
     const pool = calCat === "All" ? calendarRaw : calendarRaw.filter((r) => r.category === calCat);
     const keys = Array.from(new Set(pool.map((r) => `${r.category}||${r.subcategory}`))).sort();
@@ -257,7 +441,7 @@ function PromoCalendar() {
     return m;
   }, [calendarRaw]);
 
-  const displayedSubcats = subcats.slice(0, 20);
+  const displayed = calShowAll ? subcats : subcats.slice(0, DEFAULT_CAL_ROWS);
 
   return (
     <Card>
@@ -275,12 +459,11 @@ function PromoCalendar() {
             <span className="inline-block w-3 h-3 rounded-sm bg-amber-400" /> Meesho
           </span>
           <span className="inline-flex items-center gap-1 ml-2">
-            <span className="inline-block w-3 h-3 rounded-sm bg-red-500" /> Meesho campaign (Shopsy silent)
+            <span className="inline-block w-3 h-3 rounded-sm bg-red-500" /> Meesho campaign — Shopsy silent
           </span>
         </p>
       </CardHeader>
 
-      {/* Category filter */}
       <div className="px-4 pb-3 flex flex-wrap gap-1.5">
         {categories.map((cat) => (
           <Button
@@ -293,14 +476,14 @@ function PromoCalendar() {
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "bg-muted text-muted-foreground hover:bg-muted/70"
             )}
-            onClick={() => setCalCat(cat)}
+            onClick={() => { setCalCat(cat); setCalShowAll(false); }}
           >
             {cat}
           </Button>
         ))}
       </div>
 
-      <CardContent className="p-0 pb-4 overflow-x-auto">
+      <CardContent className="p-0 pb-2 overflow-x-auto">
         <table className="text-[10px] border-collapse" style={{ minWidth: 700 }}>
           <thead>
             <tr>
@@ -315,16 +498,16 @@ function PromoCalendar() {
             </tr>
           </thead>
           <tbody>
-            {displayedSubcats.length === 0 ? (
+            {displayed.length === 0 ? (
               <tr>
                 <td colSpan={allDates.length + 1} className="py-6 text-center text-muted-foreground">
-                  No promo calendar data loaded yet.
+                  No promo calendar data loaded.
                 </td>
               </tr>
             ) : (
-              displayedSubcats.map(({ category, subcategory }) => {
-                const key = `${category}||${subcategory}`;
-                const row = matrixMap[key] ?? {};
+              displayed.map(({ category, subcategory }) => {
+                const key  = `${category}||${subcategory}`;
+                const row  = matrixMap[key] ?? {};
                 return (
                   <tr key={key} className="border-b border-border/30 last:border-0 hover:bg-muted/10">
                     <td className="px-3 py-1.5 sticky left-0 bg-background z-10 font-medium">
@@ -332,11 +515,10 @@ function PromoCalendar() {
                       <span className="text-[9px] text-muted-foreground">{category}</span>
                     </td>
                     {allDates.map((d) => {
-                      const cell = row[d];
-                      const shopsy   = cell?.shopsy ?? false;
-                      const meesho   = cell?.meesho ?? false;
-                      const campaign = cell?.campaign ?? false;
-                      // Unanswered: Meesho active campaign, Shopsy silent
+                      const cell       = row[d];
+                      const shopsy     = cell?.shopsy   ?? false;
+                      const meesho     = cell?.meesho   ?? false;
+                      const campaign   = cell?.campaign ?? false;
                       const unanswered = campaign && meesho && !shopsy;
 
                       return (
@@ -372,10 +554,18 @@ function PromoCalendar() {
             )}
           </tbody>
         </table>
-        {subcats.length > 20 && (
-          <p className="text-[10px] text-muted-foreground px-3 pt-2">
-            Showing 20 of {subcats.length} subcategories. Filter by category to focus.
-          </p>
+
+        {subcats.length > DEFAULT_CAL_ROWS && (
+          <div className="px-3 pt-2 pb-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-[10px] text-muted-foreground h-6"
+              onClick={() => setCalShowAll((v) => !v)}
+            >
+              {calShowAll ? "Show fewer" : `Show all ${subcats.length} subcategories`}
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -387,10 +577,10 @@ function PromoCalendar() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function PromotionBudgetOptimizer() {
-  const [budgetA, setBudgetA] = useState("300");
-  const [budgetB, setBudgetB] = useState("500");
+  const [budgetA, setBudgetA]       = useState("300");
+  const [budgetB, setBudgetB]       = useState("500");
   const [scenarioRun, setScenarioRun] = useState(false);
-  const [p1Only, setP1Only] = useState(false);
+  const [p1Only, setP1Only]         = useState(false);
 
   const allROI = useMemo(() => getPromotionROI(), []);
 
@@ -399,7 +589,6 @@ export default function PromotionBudgetOptimizer() {
     [allROI, p1Only]
   );
 
-  // Scenario results
   const scenA = useMemo(
     () => scenarioRun ? allocate(parseFloat(budgetA) || 0, pool) : null,
     [scenarioRun, budgetA, pool]
@@ -409,13 +598,20 @@ export default function PromotionBudgetOptimizer() {
     [scenarioRun, budgetB, pool]
   );
 
-  // Category GMV uplift chart
-  const categoryUpliftData = useMemo(() => {
-    const catMap: Record<string, number> = {};
-    allROI.forEach((r) => { catMap[r.category] = (catMap[r.category] ?? 0) + (r.avg_subcategory_price_inr * r.estimated_monthly_orders); });
+  // Category avg ROI score (replaces GMV index sum)
+  const categoryROIData = useMemo(() => {
+    const catMap: Record<string, { total: number; count: number }> = {};
+    allROI.forEach((r) => {
+      if (!catMap[r.category]) catMap[r.category] = { total: 0, count: 0 };
+      catMap[r.category].total += r.promotion_roi_score;
+      catMap[r.category].count += 1;
+    });
     return Object.entries(catMap)
-      .map(([category, uplift]) => ({ category, uplift: +uplift.toFixed(1) }))
-      .sort((a, b) => b.uplift - a.uplift);
+      .map(([category, { total, count }]) => ({
+        category,
+        avgROI: parseFloat((total / count).toFixed(1)),
+      }))
+      .sort((a, b) => b.avgROI - a.avgROI);
   }, [allROI]);
 
   // Promo type mix
@@ -431,29 +627,33 @@ export default function PromotionBudgetOptimizer() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
+
+      {/* Page header */}
       <div>
-        <h1 className="text-lg font-semibold">Promotion Budget Optimizer</h1>
+        <h1 className="text-lg font-semibold">Where Should Shopsy Promote?</h1>
         <p className="text-xs text-muted-foreground mt-0.5">
-          ROI-ranked subcategories · Scenario comparison · 14-day promotion calendar
+          Subcategories ranked by competitive pressure, Gen Z demand, and promotional gap vs Meesho.
+          Click any row to see why it ranked where it did.
         </p>
       </div>
 
-      {/* ── Section 1 — Scenario A vs B ──────────────────────────────── */}
+      {/* ── Section 1 — Scenario Comparison ─────────────────────────── */}
       <section>
         <p className="text-[11px] font-semibold uppercase tracking-widest text-primary/70 mb-2">
           Scenario Comparison
         </p>
         <Card className="border border-primary/20">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Where should Shopsy spend?</CardTitle>
+            <CardTitle className="text-base">Compare two budget levels</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Compare two budget levels side by side. The optimizer ranks subcategories by ROI score and greedily allocates budget to the highest-return subcategories first.
+              Enter two budget levels to compare how many subcategories each covers and the
+              average quality of spend. The optimizer fills from the highest-ROI subcategories down.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Scenario A — Budget (index units)</label>
+                <label className="text-xs font-medium text-muted-foreground">Scenario A — Budget (Rs Lakhs)</label>
                 <Input
                   type="number"
                   value={budgetA}
@@ -463,7 +663,7 @@ export default function PromotionBudgetOptimizer() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Scenario B — Budget (index units)</label>
+                <label className="text-xs font-medium text-muted-foreground">Scenario B — Budget (Rs Lakhs)</label>
                 <Input
                   type="number"
                   value={budgetB}
@@ -475,10 +675,7 @@ export default function PromotionBudgetOptimizer() {
             </div>
 
             <div className="flex items-center gap-4 flex-wrap">
-              <Button
-                onClick={() => setScenarioRun(true)}
-                className="h-9 px-6 font-semibold"
-              >
+              <Button onClick={() => setScenarioRun(true)} className="h-9 px-6 font-semibold">
                 Run Scenarios
               </Button>
               <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
@@ -499,60 +696,59 @@ export default function PromotionBudgetOptimizer() {
           </CardContent>
         </Card>
 
-        {/* Scenario results */}
         {scenarioRun && scenA && scenB && (
           <>
-            {/* Summary comparison */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
               <KPICard
                 title="Scenario A — Subcategories"
                 value={String(scenA.subcatCount)}
+                subtitle="covered by budget"
                 color="green"
-                tooltip="Number of subcategories that fit within Scenario A budget."
+                tooltip="Subcategories selected under Scenario A, filled in ROI priority order."
               />
               <KPICard
-                title="Scenario A — GMV Uplift"
-                value={fmt1(scenA.totalUplift)}
-                subtitle="relative index"
+                title="Scenario A — Avg ROI Score"
+                value={fmt1(scenA.avgROI)}
+                subtitle="avg across selected"
                 color="green"
-                tooltip="Total GMV uplift index for Scenario A allocation."
+                tooltip="Average ROI score across the subcategories selected. Higher means each spend decision has a stronger competitive justification."
               />
               <KPICard
                 title="Scenario B — Subcategories"
                 value={String(scenB.subcatCount)}
+                subtitle="covered by budget"
                 color="amber"
-                tooltip="Number of subcategories that fit within Scenario B budget."
+                tooltip="Subcategories selected under Scenario B, filled in ROI priority order."
               />
               <KPICard
-                title="Scenario B — GMV Uplift"
-                value={fmt1(scenB.totalUplift)}
-                subtitle="relative index"
+                title="Scenario B — Avg ROI Score"
+                value={fmt1(scenB.avgROI)}
+                subtitle="avg across selected"
                 color="amber"
-                tooltip="Total GMV uplift index for Scenario B allocation."
+                tooltip="Average ROI score across the subcategories selected under Scenario B."
               />
             </div>
 
-            {/* Side-by-side allocation tables */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
               <Card className="border-l-4 border-l-blue-400">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">
-                    Scenario A — Budget {budgetA} · {scenA.subcatCount} subcategories · Avg ROI {fmt1(scenA.avgROI)}
+                    Scenario A — Rs{budgetA}L · {scenA.subcatCount} subcategories · Avg ROI {fmt1(scenA.avgROI)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 pb-2">
-                  <AllocTable rows={scenA.rows} label={`A (${budgetA})`} />
+                  <AllocTable rows={scenA.rows} label={`A (Rs${budgetA}L)`} />
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-amber-400">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">
-                    Scenario B — Budget {budgetB} · {scenB.subcatCount} subcategories · Avg ROI {fmt1(scenB.avgROI)}
+                    Scenario B — Rs{budgetB}L · {scenB.subcatCount} subcategories · Avg ROI {fmt1(scenB.avgROI)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 pb-2">
-                  <AllocTable rows={scenB.rows} label={`B (${budgetB})`} />
+                  <AllocTable rows={scenB.rows} label={`B (Rs${budgetB}L)`} />
                 </CardContent>
               </Card>
             </div>
@@ -560,99 +756,22 @@ export default function PromotionBudgetOptimizer() {
         )}
       </section>
 
-      {/* ── Section 2 — Full ROI Leaderboard ────────────────────────── */}
+      {/* ── Section 2 — Full Priority Queue ──────────────────────────── */}
       <section>
         <p className="text-[11px] font-semibold uppercase tracking-widest text-primary/70 mb-2">
-          ROI Leaderboard — All Subcategories
+          Subcategory Priority Queue
         </p>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Subcategory Promotion ROI Ranking</CardTitle>
+            <CardTitle className="text-base">All Subcategories — Ranked by Promotion Opportunity</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Composite score (0–100): price gap pressure 30% + Meesho promo intensity 25% + Gen Z signal 25% + Shopsy availability 20%.
-              Sorted by ROI score descending.
+              Ranked by how strongly we recommend promoting now — based on Shopsy's price gap vs
+              Meesho, Meesho's promotional intensity, Gen Z demand strength, and Shopsy's in-stock
+              position. Click any row for the plain-English reasoning behind its score.
             </p>
           </CardHeader>
           <CardContent className="p-0 pb-2 overflow-x-auto">
-            <div className="max-h-[520px] overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-border bg-muted/80 backdrop-blur-sm">
-                    <th className="text-left py-2.5 pl-4 pr-2 font-medium text-muted-foreground w-[170px]">Subcategory</th>
-                    <th className="text-left py-2.5 pr-3 font-medium text-muted-foreground text-[10px]">Category</th>
-                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Gen Z</th>
-                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger className="flex items-center gap-1 mx-auto">
-                            ROI Score <HelpCircle className="h-3 w-3 opacity-50" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">Composite score 0–100. Higher = better expected return per promotional ₹ spent.</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </th>
-                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Price Gap</th>
-                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Meesho Promo</th>
-                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Shopsy Avail.</th>
-                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Rec. Promo</th>
-                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Disc. %</th>
-                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">GMV Uplift</th>
-                    <th className="text-center py-2.5 pl-2 pr-4 font-medium text-muted-foreground">Priority</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allROI.length === 0 ? (
-                    <tr>
-                      <td colSpan={11} className="py-8 text-center text-muted-foreground">
-                        No ROI data loaded yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    allROI.map((r) => (
-                      <tr
-                        key={`${r.category}-${r.subcategory}`}
-                        className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors"
-                      >
-                        <td className="py-2.5 pl-4 pr-2 font-medium">{r.subcategory}</td>
-                        <td className="py-2.5 pr-3 text-muted-foreground text-[10px]">{r.category}</td>
-                        <td className="py-2.5 px-2 text-center">
-                          <span className={cn("inline-block rounded px-1.5 py-0.5 text-[10px] font-medium", GENZ_PILL[r.genz_signal])}>
-                            {GENZ_LABEL[r.genz_signal]}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-2 text-center">
-                          <span className={cn(
-                            "inline-block rounded px-2 py-0.5 text-xs font-bold tabular-nums",
-                            r.promotion_roi_score > 70
-                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                              : r.promotion_roi_score > 50
-                                ? "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
-                                : "bg-muted text-muted-foreground"
-                          )}>
-                            {fmt1(r.promotion_roi_score)}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-2 text-center tabular-nums text-xs">
-                          {r.avg_price_gap_pct > 0 ? "+" : ""}{fmt1(r.avg_price_gap_pct)}%
-                        </td>
-                        <td className="py-2.5 px-2 text-center tabular-nums text-xs">
-                          {(r.meesho_promo_rate * 100).toFixed(0)}%
-                        </td>
-                        <td className="py-2.5 px-2 text-center tabular-nums text-xs">
-                          {(r.shopsy_availability * 100).toFixed(0)}%
-                        </td>
-                        <td className="py-2.5 px-2 text-center">{promoBadge(r.recommended_promo_type)}</td>
-                        <td className="py-2.5 px-2 text-center tabular-nums text-xs">{fmt1(r.recommended_discount)}%</td>
-                        <td className="py-2.5 px-2 text-center tabular-nums text-xs font-medium">{fmt1(r.avg_subcategory_price_inr * r.estimated_monthly_orders)}</td>
-                        <td className="py-2.5 pl-2 pr-4 text-center">{priorityBadge(r.budget_priority)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <PriorityQueueTable rows={allROI} />
           </CardContent>
         </Card>
       </section>
@@ -665,25 +784,26 @@ export default function PromotionBudgetOptimizer() {
         <PromoCalendar />
       </section>
 
-      {/* ── Section 4 — Category GMV + Promo Mix ─────────────────────── */}
+      {/* ── Section 4 — Category Opportunity + Promo Mix ─────────────── */}
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">GMV Uplift Potential by Category</CardTitle>
+            <CardTitle className="text-base">Promo Opportunity by Category</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Sum of estimated GMV uplift index across all subcategories per category
+              Average ROI score across subcategories per category. Higher = more subcategories
+              with a strong competitive case to promote now.
             </p>
           </CardHeader>
           <CardContent>
-            {categoryUpliftData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={Math.max(260, categoryUpliftData.length * 34)}>
+            {categoryROIData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={Math.max(260, categoryROIData.length * 34)}>
                 <BarChart
-                  data={categoryUpliftData}
+                  data={categoryROIData}
                   layout="vertical"
-                  margin={{ left: 160, right: 50, top: 5, bottom: 5 }}
+                  margin={{ left: 160, right: 60, top: 5, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" fontSize={11} />
+                  <XAxis type="number" fontSize={11} domain={[0, 100]} tickFormatter={(v) => `${v}`} />
                   <YAxis
                     type="category"
                     dataKey="category"
@@ -693,17 +813,17 @@ export default function PromotionBudgetOptimizer() {
                   />
                   <RechartsTooltip
                     {...chartTooltipProps}
-                    formatter={(v: number) => [fmt1(v), "GMV Uplift Index"]}
+                    formatter={(v: number) => [v.toFixed(1), "Avg ROI Score"]}
                   />
-                  <Bar dataKey="uplift" radius={[0, 4, 4, 0]}>
-                    {categoryUpliftData.map((_, i) => (
+                  <Bar dataKey="avgROI" radius={[0, 4, 4, 0]}>
+                    {categoryROIData.map((_, i) => (
                       <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
                     ))}
                     <LabelList
-                      dataKey="uplift"
+                      dataKey="avgROI"
                       position="right"
                       fontSize={10}
-                      formatter={(v: number) => fmt1(v)}
+                      formatter={(v: number) => v.toFixed(1)}
                     />
                   </Bar>
                 </BarChart>
@@ -718,7 +838,7 @@ export default function PromotionBudgetOptimizer() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Recommended Promo Mix</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Distribution of recommended promo types across all ROI-ranked subcategories
+              Distribution of recommended promo types across all ranked subcategories
             </p>
           </CardHeader>
           <CardContent className="flex justify-center">

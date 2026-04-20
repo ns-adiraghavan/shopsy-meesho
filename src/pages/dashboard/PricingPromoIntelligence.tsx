@@ -235,6 +235,8 @@ export default function PricingPromoIntelligence() {
   const [selectedRow, setSelectedRow] = useState<TrendSelection | null>(null);
   const [flagged, setFlagged] = useState<Set<string>>(new Set());
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
+  const [showAllTable, setShowAllTable] = useState(false);
+  const TABLE_PREVIEW = 10;
 
   const latestDate = getLatestDate();
 
@@ -415,7 +417,7 @@ export default function PricingPromoIntelligence() {
                       </td>
                     </tr>
                   ) : (
-                    filteredRows.map((row) => {
+                    (showAllTable ? filteredRows : filteredRows.slice(0, TABLE_PREVIEW)).map((row) => {
                       const key = flagKey(row.category, row.subcategory);
                       const isFlagged = flagged.has(key);
                       const isSelected =
@@ -493,6 +495,13 @@ export default function PricingPromoIntelligence() {
                   )}
                 </tbody>
               </table>
+              {filteredRows.length > TABLE_PREVIEW && (
+                <div className="px-4 pt-3 pb-1">
+                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7" onClick={() => setShowAllTable(v => !v)}>
+                    {showAllTable ? "Show fewer" : `Show all ${filteredRows.length} subcategories`}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

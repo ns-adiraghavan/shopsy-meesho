@@ -121,6 +121,13 @@ function KPICard({
 export default function DemandAvailability() {
   const [catFilter, setCatFilter] = useState("All");
   const [platformFilter, setPlatformFilter] = useState<"Both" | "Shopsy" | "Meesho">("Both");
+  const [showAllPromote, setShowAllPromote] = useState(false);
+  const [showAllFix, setShowAllFix]         = useState(false);
+  const [showAllHold, setShowAllHold]       = useState(false);
+  const [showAllTable, setShowAllTable]     = useState(false);
+
+  const ACTION_PREVIEW = 5;
+  const TABLE_PREVIEW  = 10;
 
   const latestDate = getLatestDate();
   const allDates   = getAllDates();
@@ -249,11 +256,11 @@ export default function DemandAvailability() {
       {/* ── Section 1 — KPIs ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KPICard
-          title="Avg Demand Score (Shopsy)"
+          title="Demand Pressure (Shopsy)"
           value={fmt1(avgDemandShopsy)}
-          subtitle="0–99 composite"
+          subtitle="avg across subcategories"
           color={avgDemandShopsy > 65 ? "green" : "amber"}
-          tooltip="Average demand intensity score across all Shopsy subcategories on the latest date. Driven by Gen Z signal, stockout risk, and demand velocity."
+          tooltip="How intensely consumers are seeking Shopsy products right now — driven by Gen Z engagement, rising search rank, and stockout patterns. Above 65 = strong promotional candidate."
         />
         <KPICard
           title="Act Now Subcategories"
@@ -270,11 +277,11 @@ export default function DemandAvailability() {
           tooltip="Shopsy subcategories where the stockout rate exceeds 15% on the latest date."
         />
         <KPICard
-          title="Lost Demand Index"
-          value={fmt1(totalLostDemand)}
-          subtitle="demand × stockout, all subcats"
+          title="Demand Exceeds Supply"
+          value={String(demandShopsy.filter((r) => r.demand_score > 55 && r.stockout_risk > 0.15).length)}
+          subtitle="subcategories: high demand, low stock"
           color={totalLostDemand > 500 ? "red" : "amber"}
-          tooltip="Sum of (demand_score × stockout_risk) across all Shopsy subcategories. Directional proxy for total demand being missed due to availability gaps."
+          tooltip="Subcategories where consumer demand is strong but Shopsy availability is under pressure — the most urgent replenishment candidates."
         />
       </div>
 
@@ -290,10 +297,10 @@ export default function DemandAvailability() {
               <CardTitle className="text-sm">Promote These</CardTitle>
               <p className="text-[10px] text-muted-foreground">High demand · supply available · ready to push</p>
             </CardHeader>
-            <CardContent className="space-y-2 max-h-[300px] overflow-y-auto">
+            <CardContent className="space-y-2">
               {promoteThese.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-4 text-center">None found</p>
-              ) : promoteThese.map((r) => (
+              ) : (showAllPromote ? promoteThese : promoteThese.slice(0, ACTION_PREVIEW)).map((r) => (
                 <div key={`${r.category}-${r.subcategory}`} className="flex items-start justify-between gap-2 text-xs border-b border-border/30 pb-2 last:border-0">
                   <div className="min-w-0">
                     <p className="font-medium truncate">{r.subcategory}</p>
@@ -305,6 +312,11 @@ export default function DemandAvailability() {
                   </div>
                 </div>
               ))}
+              {promoteThese.length > ACTION_PREVIEW && (
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7 px-0" onClick={() => setShowAllPromote(v => !v)}>
+                  {showAllPromote ? "Show fewer" : `+${promoteThese.length - ACTION_PREVIEW} more`}
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -313,10 +325,10 @@ export default function DemandAvailability() {
               <CardTitle className="text-sm">Fix Supply First</CardTitle>
               <p className="text-[10px] text-muted-foreground">High demand · high stockout · promoting will waste spend</p>
             </CardHeader>
-            <CardContent className="space-y-2 max-h-[300px] overflow-y-auto">
+            <CardContent className="space-y-2">
               {fixSupply.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-4 text-center">None found</p>
-              ) : fixSupply.map((r) => (
+              ) : (showAllFix ? fixSupply : fixSupply.slice(0, ACTION_PREVIEW)).map((r) => (
                 <div key={`${r.category}-${r.subcategory}`} className="flex items-start justify-between gap-2 text-xs border-b border-border/30 pb-2 last:border-0">
                   <div className="min-w-0">
                     <p className="font-medium truncate">{r.subcategory}</p>
@@ -328,6 +340,11 @@ export default function DemandAvailability() {
                   </div>
                 </div>
               ))}
+              {fixSupply.length > ACTION_PREVIEW && (
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7 px-0" onClick={() => setShowAllFix(v => !v)}>
+                  {showAllFix ? "Show fewer" : `+${fixSupply.length - ACTION_PREVIEW} more`}
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -336,10 +353,10 @@ export default function DemandAvailability() {
               <CardTitle className="text-sm">Hold</CardTitle>
               <p className="text-[10px] text-muted-foreground">Low demand · conserve budget</p>
             </CardHeader>
-            <CardContent className="space-y-2 max-h-[300px] overflow-y-auto">
+            <CardContent className="space-y-2">
               {hold.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-4 text-center">None found</p>
-              ) : hold.map((r) => (
+              ) : (showAllHold ? hold : hold.slice(0, ACTION_PREVIEW)).map((r) => (
                 <div key={`${r.category}-${r.subcategory}`} className="flex items-start justify-between gap-2 text-xs border-b border-border/30 pb-2 last:border-0">
                   <div className="min-w-0">
                     <p className="font-medium truncate">{r.subcategory}</p>
@@ -351,6 +368,11 @@ export default function DemandAvailability() {
                   </div>
                 </div>
               ))}
+              {hold.length > ACTION_PREVIEW && (
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7 px-0" onClick={() => setShowAllHold(v => !v)}>
+                  {showAllHold ? "Show fewer" : `+${hold.length - ACTION_PREVIEW} more`}
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -502,7 +524,7 @@ export default function DemandAvailability() {
             </p>
           </CardHeader>
           <CardContent className="p-0 pb-2 overflow-x-auto">
-            <div className="max-h-[520px] overflow-y-auto">
+            <div>
               <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-border bg-muted/80 backdrop-blur-sm">
@@ -516,8 +538,8 @@ export default function DemandAvailability() {
                           <TooltipTrigger className="flex items-center gap-1 mx-auto">
                             Demand <HelpCircle className="h-3 w-3 opacity-50" />
                           </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">Demand intensity score 0–99. Driven by Gen Z signal, stockout pressure, and velocity.</p>
+                          <TooltipContent className="max-w-[220px]">
+                            <p className="text-xs">How strongly consumers are seeking this subcategory. Above 75 = high urgency to promote (if stock is healthy) or replenish (if OOS is elevated).</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -535,7 +557,18 @@ export default function DemandAvailability() {
                         </Tooltip>
                       </TooltipProvider>
                     </th>
-                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Lost Demand</th>
+                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger className="flex items-center gap-1 mx-auto">
+                            Missed Demand <HelpCircle className="h-3 w-3 opacity-50" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[220px]">
+                            <p className="text-xs">Directional signal for unmet demand — higher means more consumers are likely not finding stock. Not a revenue figure; use for prioritisation only.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </th>
                     <th className="text-center py-2.5 pl-2 pr-4 font-medium text-muted-foreground">Action</th>
                   </tr>
                 </thead>
@@ -547,7 +580,7 @@ export default function DemandAvailability() {
                       </td>
                     </tr>
                   ) : (
-                    displayRows.map((row) => {
+                    (showAllTable ? displayRows : displayRows.slice(0, TABLE_PREVIEW)).map((row) => {
                       const trendKey = `${row.category}||${row.subcategory}||${row.platform}`;
                       const trendDir = trendDirections[trendKey] ?? 0;
                       return (
@@ -613,6 +646,13 @@ export default function DemandAvailability() {
                 </tbody>
               </table>
             </div>
+            {displayRows.length > TABLE_PREVIEW && (
+              <div className="px-4 pt-3 pb-1">
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7" onClick={() => setShowAllTable(v => !v)}>
+                  {showAllTable ? "Show fewer" : `Show all ${displayRows.length} subcategories`}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </section>
