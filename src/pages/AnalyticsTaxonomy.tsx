@@ -16,173 +16,237 @@ interface KPI {
 }
 
 const KPIS: KPI[] = [
+
+  // ── Promotion Budget Optimizer ────────────────────────────────────────────────
+  {
+    name: "Promotion ROI Score",
+    formula: "How strongly we recommend promoting this subcategory now. Combines four signals: how much Shopsy is priced above Meesho (30%), how aggressively Meesho is currently promoting (25%), Gen Z demand strength (25%), and Shopsy's ability to absorb traffic given current stock levels (20%). Higher = stronger case to act.",
+    dataset: "promotion_roi",
+    usedIn: ["Promotion Budget Optimizer — Priority Queue", "Promotion Budget Optimizer — Scenario Comparison"],
+    module: "Promotion Budget Optimizer",
+  },
+  {
+    name: "Recommended Promo Type",
+    formula: "Flash Sale when Shopsy price gap vs Meesho exceeds 15% — close the gap aggressively. Coupon when gap is 8–15%. Flat Discount when gap is 3–8%. Bundle when Shopsy is already price-competitive — hold price, add value.",
+    dataset: "promotion_roi",
+    usedIn: ["Promotion Budget Optimizer — Priority Queue", "Promotion Budget Optimizer — Scenario Comparison"],
+    module: "Promotion Budget Optimizer",
+  },
+  {
+    name: "Recommended Discount %",
+    formula: "Discount depth matched to promo type: Flash Sale 14–20%, Coupon 8–14%, Flat Discount 5–9%, Bundle 5–10%.",
+    dataset: "promotion_roi",
+    usedIn: ["Promotion Budget Optimizer — Priority Queue"],
+    module: "Promotion Budget Optimizer",
+  },
+  {
+    name: "Budget Priority",
+    formula: "P1 — Act Now: ROI Score above 70. P2 — Consider: ROI Score 50–70. P3 — Monitor: ROI Score below 50.",
+    dataset: "promotion_roi",
+    usedIn: ["Promotion Budget Optimizer — Priority Queue", "Promotion Budget Optimizer — Scenario Comparison"],
+    module: "Promotion Budget Optimizer",
+  },
+  {
+    name: "Avg ROI Score (Scenario)",
+    formula: "Average Promotion ROI Score across the subcategories selected within a given budget scenario. Higher means each spend decision has a stronger competitive justification.",
+    dataset: "promotion_roi",
+    usedIn: ["Promotion Budget Optimizer — Scenario Comparison"],
+    module: "Promotion Budget Optimizer",
+  },
+  {
+    name: "Promo Opportunity by Category",
+    formula: "Average Promotion ROI Score across all subcategories within a category. Higher = more subcategories in that category with a strong competitive case to promote now.",
+    dataset: "promotion_roi",
+    usedIn: ["Promotion Budget Optimizer — Category Chart"],
+    module: "Promotion Budget Optimizer",
+  },
+
+  // ── Demand & Availability ─────────────────────────────────────────────────────
+  {
+    name: "Demand Pressure Score",
+    formula: "How intensely consumers are seeking products in a subcategory right now. Driven by Gen Z engagement level, stockout patterns (stockouts proxy unmet demand), and demand velocity. Above 65 = strong promotional candidate. Above 75 = high urgency to either promote (if stock is healthy) or replenish (if OOS is elevated).",
+    dataset: "demand_signals",
+    usedIn: ["Demand & Availability — KPI", "Demand & Availability — Subcategory Table", "Demand & Availability — Action Queue"],
+    module: "Demand & Availability",
+  },
+  {
+    name: "Stockout Risk",
+    formula: "1 − availability_rate. The share of listings in a subcategory that are out of stock on a given platform and date. Above 15% = elevated risk; above 20% = critical.",
+    dataset: "category_availability",
+    usedIn: ["Demand & Availability — Subcategory Table", "Demand & Availability — Stockout by Category Chart"],
+    module: "Demand & Availability",
+  },
+  {
+    name: "Demand Exceeds Supply",
+    formula: "Count of subcategories where Demand Pressure Score > 55 AND Stockout Risk > 15%. These are the most urgent replenishment candidates — strong demand is present but Shopsy cannot fulfil it.",
+    dataset: "demand_signals, category_availability",
+    usedIn: ["Demand & Availability — KPI"],
+    module: "Demand & Availability",
+  },
+  {
+    name: "Missed Demand Score",
+    formula: "Demand Pressure Score × Stockout Risk per subcategory. Directional signal for unmet demand — higher means more consumers are likely not finding stock. Use for prioritisation only; not a revenue figure.",
+    dataset: "demand_signals",
+    usedIn: ["Demand & Availability — Subcategory Table"],
+    module: "Demand & Availability",
+  },
+  {
+    name: "Action Flag",
+    formula: "Act Now: Demand Score > 75 AND Stockout Risk > 15% — supply intervention needed before or alongside promotion. Monitor: Demand Score > 55. Hold: Demand Score < 40 — conserve budget.",
+    dataset: "demand_signals",
+    usedIn: ["Demand & Availability — Action Queue", "Demand & Availability — Subcategory Table"],
+    module: "Demand & Availability",
+  },
+  {
+    name: "Availability Trend Direction",
+    formula: "14-day slope of availability_rate for a subcategory × platform combination. Upward = availability deteriorating (more OOS over time). Downward = availability improving.",
+    dataset: "category_availability",
+    usedIn: ["Demand & Availability — Subcategory Table"],
+    module: "Demand & Availability",
+  },
+
+  // ── Gen Z Demand Signals ──────────────────────────────────────────────────────
+  {
+    name: "Gen Z Traction Score",
+    formula: "How strongly Gen Z shoppers are engaging with a subcategory on a given platform. Built from the subcategory's inherent Gen Z signal level (e.g. Very High for Co-ord Sets, Gaming), platform advantages (Meesho leads fashion Gen Z; Shopsy leads electronics Gen Z), and a 14-day upward trend component. Trending ≥ 80, Rising ≥ 65, Emerging ≥ 50, Watching < 50.",
+    dataset: "genz_signals",
+    usedIn: ["Gen Z Demand Signals — Leaderboard", "Gen Z Demand Signals — Category Chart", "Promotion Budget Optimizer"],
+    module: "Gen Z Demand Signals",
+  },
+  {
+    name: "Gen Z Signal Level",
+    formula: "Taxonomy classification per subcategory: Very High (Co-ord Sets, Oversized T-shirts, Skincare Serums, Audio, Gaming), High (Western Dresses, Graphic Tees, Artificial Jewellery, Wireless Earbuds), Moderate, or Low. Set at data generation time based on category Gen Z affinity.",
+    dataset: "category_master",
+    usedIn: ["Gen Z Demand Signals — Leaderboard", "Gen Z Demand Signals — Strategic Response", "Promotion Budget Optimizer", "Demand & Availability"],
+    module: "Gen Z Demand Signals",
+  },
+  {
+    name: "Platform Gen Z Leader",
+    formula: "The platform (Shopsy or Meesho) with the higher Gen Z Traction Score for a given subcategory on the latest date. Score Gap = absolute difference between the two platform scores.",
+    dataset: "genz_signals",
+    usedIn: ["Gen Z Demand Signals — Leaderboard"],
+    module: "Gen Z Demand Signals",
+  },
+  {
+    name: "Response Gap",
+    formula: "High or Very High Gen Z subcategories where Meesho's traction score exceeds Shopsy's by more than 3 points. Combined with Shopsy's price premium vs Meesho and whether Meesho has an active campaign — identifies the highest-priority subcategories for promotional or assortment response.",
+    dataset: "genz_signals, category_pricing",
+    usedIn: ["Gen Z Demand Signals — Strategic Response Panel"],
+    module: "Gen Z Demand Signals",
+  },
+  {
+    name: "Gen Z Search Visibility",
+    formula: "Share of top-10 search slots (%) that a platform occupies in a given subcategory. Calculated from a 50/50 base modified by platform-category search bias factors. Lower visibility in a high Gen Z subcategory = missed demand that cannot be captured through organic search.",
+    dataset: "category_search",
+    usedIn: ["Gen Z Demand Signals — Search Visibility Chart"],
+    module: "Gen Z Demand Signals",
+  },
+
   // ── Competitive Overview ──────────────────────────────────────────────────────
   {
-    name: "SKU Availability Rate",
-    formula: "SUM(availability_flag) / COUNT(rows) × 100",
-    dataset: "availability_tracking",
-    usedIn: ["Competitive Overview", "Availability Intelligence", "Local Market Intelligence"],
+    name: "Price Gap (Platform vs Competitor)",
+    formula: "((Shopsy avg sale price − Meesho avg sale price) / Meesho avg sale price) × 100. Positive = Shopsy is more expensive. Computed per subcategory and aggregated to platform level.",
+    dataset: "category_pricing",
+    usedIn: ["Competitive Overview — Platform KPIs", "Pricing & Promotions — Subcategory Table"],
     module: "Competitive Overview",
   },
   {
-    name: "Avg. Top-10 Presence",
-    formula: "AVG per platform of [ SUM(top10_flag = 1) / COUNT(search observations) × 100 ] — averaged across all tracked platforms for Competitive Overview; per-platform in Search & Shelf Visibility",
-    dataset: "search_rank_tracking",
-    usedIn: ["Competitive Overview (cross-platform avg)", "Search & Shelf Visibility (per-platform)", "Local Market Intelligence"],
+    name: "Promo Rate",
+    formula: "Share of subcategory × date observations where a promotion was active. Meesho's base promo rate is structurally higher due to its reseller model (deeper and more frequent discounts).",
+    dataset: "category_pricing, promo_calendar",
+    usedIn: ["Competitive Overview — Platform KPIs", "Pricing & Promotions"],
     module: "Competitive Overview",
   },
   {
-    name: "Avg Price Gap vs Competitors",
-    formula: "(Zepto sale_price − competitor avg sale_price) / competitor avg sale_price × 100",
-    dataset: "price_tracking",
-    usedIn: ["Competitive Overview", "Pricing & Promotion Intelligence"],
+    name: "Competitive Pressure Rating",
+    formula: "Critical: Shopsy price gap > 15% AND Meesho promo intensity gap > 10pp. High: price gap > 8% OR promo gap > 8pp. Medium: price gap > 3% OR promo gap > 4pp. Low otherwise. Used to colour-code the Category Pressure Matrix.",
+    dataset: "category_summary",
+    usedIn: ["Competitive Overview — Category Pressure Matrix"],
     module: "Competitive Overview",
   },
   {
-    name: "% SKUs Under Promotion",
-    formula: "SUM(promotion_flag = 1) / COUNT(rows) × 100",
-    dataset: "price_tracking",
-    usedIn: ["Competitive Overview", "Pricing & Promotion Intelligence", "Local Market Intelligence"],
+    name: "Gen Z Traction (Platform Avg)",
+    formula: "Average Gen Z Traction Score across all subcategories for a platform on the latest date. Used for side-by-side platform comparison only — not a substitute for subcategory-level analysis.",
+    dataset: "genz_signals",
+    usedIn: ["Competitive Overview — Platform KPIs"],
     module: "Competitive Overview",
+  },
+  {
+    name: "Availability Rate (Platform)",
+    formula: "Average in-stock rate across all monitored subcategories for a platform on the latest date. 100% = all listings in stock.",
+    dataset: "category_availability",
+    usedIn: ["Competitive Overview — Platform KPIs"],
+    module: "Competitive Overview",
+  },
+
+  // ── Pricing & Promotions ──────────────────────────────────────────────────────
+  {
+    name: "Subcategory Price Gap",
+    formula: "((Shopsy avg sale price − Meesho avg sale price) / Meesho avg sale price) × 100 for a specific subcategory on the latest date. Positive = Shopsy overpriced vs Meesho. Pre-computed at generation time — the frontend never joins platform rows.",
+    dataset: "category_pricing",
+    usedIn: ["Pricing & Promotions — Subcategory Table", "Promotion Budget Optimizer"],
+    module: "Pricing & Promotions",
+  },
+  {
+    name: "Promo Intensity Gap",
+    formula: "Meesho avg promo rate − Shopsy avg promo rate across the full date window for a subcategory. Positive = Meesho is out-promoting Shopsy. A large positive number in a high Gen Z category is the most actionable alert on this page.",
+    dataset: "category_summary",
+    usedIn: ["Pricing & Promotions — Subcategory Table", "Competitive Overview"],
+    module: "Pricing & Promotions",
+  },
+  {
+    name: "Unanswered Promotion",
+    formula: "Subcategories where Meesho has an active promotion on the current date and Shopsy does not. Identified via is_campaign_event flag — distinguishes deliberate Meesho campaigns from organic promotions.",
+    dataset: "promo_calendar",
+    usedIn: ["Pricing & Promotions — KPI", "Promotion Budget Optimizer — Promo Calendar"],
+    module: "Pricing & Promotions",
   },
   {
     name: "Avg Discount Depth",
-    formula: "AVG(discount_percent) across rows where promotion_flag = 1",
-    dataset: "price_tracking",
-    usedIn: ["Competitive Overview", "Pricing & Promotion Intelligence", "Local Market Intelligence"],
-    module: "Competitive Overview",
-  },
-
-  // ── Pricing & Promotion Intelligence ─────────────────────────────────────────
-  {
-    name: "Avg Sale Price",
-    formula: "AVG(sale_price) across filtered rows",
-    dataset: "price_tracking",
-    usedIn: ["Pricing & Promotion Intelligence"],
-    module: "Pricing & Promotion Intelligence",
-  },
-  {
-    name: "Price Index",
-    formula: "AVG(sale_price) / AVG(mrp) × 100 — measures effective price vs list price",
-    dataset: "price_tracking",
-    usedIn: ["Pricing & Promotion Intelligence", "Competitive Overview"],
-    module: "Pricing & Promotion Intelligence",
-  },
-  {
-    name: "Promotion Frequency",
-    formula: "COUNT(distinct dates where promotion_flag = 1) / COUNT(distinct dates) × 100",
-    dataset: "price_tracking",
-    usedIn: ["Pricing & Promotion Intelligence"],
-    module: "Pricing & Promotion Intelligence",
-  },
-
-  // ── Search & Shelf Visibility ─────────────────────────────────────────────────
-  {
-    name: "Avg Search Rank",
-    formula: "AVG(search_rank) across all tracked keyword-platform observations",
-    dataset: "search_rank_tracking",
-    usedIn: ["Search & Shelf Visibility"],
-    module: "Search & Shelf Visibility",
-  },
-  {
-    name: "Top-3 Search Share",
-    formula: "SUM(search_rank ≤ 3) / COUNT(observations) × 100",
-    dataset: "search_rank_tracking",
-    usedIn: ["Search & Shelf Visibility", "Competitive Overview"],
-    module: "Search & Shelf Visibility",
-  },
-  {
-    name: "Sponsored Share",
-    formula: "SUM(sponsored_flag = 1) / COUNT(observations) × 100",
-    dataset: "search_rank_tracking",
-    usedIn: ["Search & Shelf Visibility"],
-    module: "Search & Shelf Visibility",
-  },
-  {
-    name: "Top-10 Presence (per platform)",
-    formula: "SUM(top10_flag = 1) / COUNT(observations) × 100 — computed per platform for rank distribution and visibility charts",
-    dataset: "search_rank_tracking",
-    usedIn: ["Search & Shelf Visibility"],
-    module: "Search & Shelf Visibility",
+    formula: "Average discount percentage across all active promotions for a platform × subcategory × date. Meesho structurally discounts deeper (10–38%) than Shopsy (8–28%) due to its reseller model.",
+    dataset: "category_pricing",
+    usedIn: ["Pricing & Promotions — Subcategory Table"],
+    module: "Pricing & Promotions",
   },
 
   // ── Assortment Intelligence ───────────────────────────────────────────────────
   {
-    name: "SKU Coverage",
-    formula: "COUNT(distinct sku_id where listing_status = 1) per platform-category",
-    dataset: "assortment_tracking",
-    usedIn: ["Assortment Intelligence"],
+    name: "Catalogue Depth (% of Meesho)",
+    formula: "Shopsy depth score ÷ Meesho depth score × 100. Represents how broad Shopsy's listing catalogue is relative to Meesho's in a given subcategory. 100% = parity. Below 70% = Shopsy is materially under-assorted and likely losing discovery to Meesho.",
+    dataset: "category_assortment",
+    usedIn: ["Assortment Intelligence — Subcategory Table", "Assortment Intelligence — Depth Ratio Chart"],
     module: "Assortment Intelligence",
   },
   {
-    name: "Listing Rate",
-    formula: "COUNT(listing_status = 1) / COUNT(total SKU-platform combos) × 100",
-    dataset: "assortment_tracking",
-    usedIn: ["Assortment Intelligence"],
+    name: "Depth Gap",
+    formula: "Meesho depth score − Shopsy depth score. Positive = Meesho has a broader catalogue. Always from Shopsy's perspective — a positive number is a gap Shopsy should close.",
+    dataset: "category_assortment",
+    usedIn: ["Assortment Intelligence — Subcategory Table"],
     module: "Assortment Intelligence",
   },
   {
-    name: "Category Assortment Depth",
-    formula: "COUNT(distinct sku_id listed) within a category per platform",
-    dataset: "assortment_tracking",
-    usedIn: ["Assortment Intelligence"],
+    name: "Assortment Priority",
+    formula: "High: Depth Gap > 0.25 AND Gen Z signal is Very High or High — a listing gap in a category consumers are actively searching. Medium: Depth Gap > 0.15. Low: otherwise.",
+    dataset: "category_assortment",
+    usedIn: ["Assortment Intelligence — Subcategory Table"],
     module: "Assortment Intelligence",
   },
   {
-    name: "Platform Exclusive SKUs",
-    formula: "COUNT(sku_id listed on exactly 1 platform) / COUNT(total SKUs) × 100",
-    dataset: "assortment_tracking",
-    usedIn: ["Assortment Intelligence"],
+    name: "Critical Depth Gap",
+    formula: "Shopsy catalogue depth is below 70% of Meesho's (depth ratio < 0.70). These subcategories have a structural listing disadvantage — consumers searching on-platform will find far more options on Meesho.",
+    dataset: "category_assortment",
+    usedIn: ["Assortment Intelligence — KPI"],
     module: "Assortment Intelligence",
-  },
-
-  // ── Availability Intelligence ─────────────────────────────────────────────────
-  {
-    name: "Must-Have SKU Availability",
-    formula: "AVG(availability_flag) × 100 — filtered to must_have_flag = 1 rows only",
-    dataset: "availability_tracking",
-    usedIn: ["Availability Intelligence"],
-    module: "Availability Intelligence",
-  },
-  {
-    name: "Stockout Rate",
-    formula: "SUM(availability_flag = 0) / COUNT(rows) × 100",
-    dataset: "availability_tracking",
-    usedIn: ["Availability Intelligence", "Competitive Overview"],
-    module: "Availability Intelligence",
-  },
-  {
-    name: "Category Availability Health",
-    formula: "AVG(availability_flag) × 100 grouped by category — shows weakest category",
-    dataset: "availability_tracking",
-    usedIn: ["Availability Intelligence"],
-    module: "Availability Intelligence",
-  },
-
-  // ── Local Market Intelligence ─────────────────────────────────────────────────
-  {
-    name: "Market Competition Index",
-    formula: "0.35 × % SKUs Under Promotion + 0.25 × Avg Discount Depth + 0.20 × Top-10 Presence + 0.20 × SKU Availability Rate — computed independently per city",
-    dataset: "price_tracking, availability_tracking, search_rank_tracking",
-    usedIn: ["Local Market Intelligence"],
-    module: "Local Market Intelligence",
-  },
-  {
-    name: "Hyperlocal Price Variance",
-    formula: "STDDEV(AVG(sale_price) grouped by pincode) within a city — or by SKU×platform when no pincode data exists",
-    dataset: "price_tracking",
-    usedIn: ["Local Market Intelligence"],
-    module: "Local Market Intelligence",
   },
 ];
 
 const MODULE_COLORS: Record<string, string> = {
-  "Competitive Overview":            "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-  "Pricing & Promotion Intelligence":"bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-  "Search & Shelf Visibility":       "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-  "Assortment Intelligence":         "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-  "Availability Intelligence":       "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-  "Local Market Intelligence":       "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
+  "Promotion Budget Optimizer": "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  "Demand & Availability":      "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+  "Gen Z Demand Signals":       "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+  "Competitive Overview":       "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  "Pricing & Promotions":       "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  "Assortment Intelligence":    "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
 };
 
 const ALL_MODULES = Object.keys(MODULE_COLORS);
@@ -342,7 +406,7 @@ const AnalyticsTaxonomy = () => {
       </div>
 
       <p className="text-xs text-muted-foreground pb-4">
-        All formulas operate on filtered subsets respecting the global City, Platform, Category, and Pincode selectors unless stated otherwise.
+        All KPIs are pre-computed at data generation time. The frontend visualises values — it never re-derives them. Definitions reflect the Shopsy vs Meesho synthetic dataset (Apr 2026).
       </p>
     </div>
   );
