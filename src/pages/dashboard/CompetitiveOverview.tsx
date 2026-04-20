@@ -269,11 +269,9 @@ function TopROISubcategoriesKPI() {
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-sm">
                 <p className="text-xs">
-                  Ranked by ROI score: price premium vs Meesho (30%), Meesho promo
-                  intensity (25%), Gen Z signal (25%), Shopsy availability (20%).
-                  Orders at risk = Meesho monthly orders in subcategory (Meesho RHP
-                  1.83B annual ÷ Redseer category weights) × price suppression at
-                  −1.2 per % gap, capped 35%.
+                  Subcategories ranked by how strongly we recommend promoting now —
+                  based on Shopsy's price gap vs Meesho, Meesho's promotional intensity,
+                  Gen Z demand strength, and Shopsy's in-stock position.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -577,9 +575,9 @@ export default function CompetitiveOverview() {
       {/* ── Section 1 — KPI Bar ─────────────────────────────────────────── */}
       <section>
         <h1 className="text-lg font-semibold mb-3">Competitive Overview</h1>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3 mb-3">
 
-          {/* CARD A — replaces Competitiveness Score */}
+          {/* CARD A — Unanswered Promotions */}
           <UnansweredPromosKPI />
 
           <DualKPICard
@@ -599,9 +597,6 @@ export default function CompetitiveOverview() {
             tooltip="% of subcategory × date observations with an active promotion running."
           />
 
-          {/* CARD C — replaces Avg Discount Depth */}
-          <TopROISubcategoriesKPI />
-
           <DualKPICard
             title="Gen Z Traction"
             shopsyValue={s ? fmt1(s.avg_genz_traction) : "—"}
@@ -620,6 +615,9 @@ export default function CompetitiveOverview() {
           />
 
         </div>
+
+        {/* Top Promo Opportunities — full width below the number cards */}
+        <TopROISubcategoriesKPI />
       </section>
 
       {/* ── Section 2 — Real-World Anchors ──────────────────────────────── */}

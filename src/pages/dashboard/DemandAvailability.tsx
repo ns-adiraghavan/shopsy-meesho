@@ -192,7 +192,7 @@ export default function DemandAvailability() {
 
   const hold = useMemo(() =>
     demandShopsy
-      .filter((r) => r.demand_score < 40)
+      .filter((r) => r.demand_score < 55 && r.stockout_risk < 0.10)
       .sort((a, b) => a.demand_score - b.demand_score)
       .slice(0, 8),
     [demandShopsy]
@@ -535,8 +535,10 @@ export default function DemandAvailability() {
                     <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">
                       <TooltipProvider>
                         <Tooltip>
-                          <TooltipTrigger className="flex items-center gap-1 mx-auto">
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center gap-1 mx-auto cursor-default">
                             Demand <HelpCircle className="h-3 w-3 opacity-50" />
+                            </span>
                           </TooltipTrigger>
                           <TooltipContent className="max-w-[220px]">
                             <p className="text-xs">How strongly consumers are seeking this subcategory. Above 75 = high urgency to promote (if stock is healthy) or replenish (if OOS is elevated).</p>
@@ -548,8 +550,10 @@ export default function DemandAvailability() {
                     <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">
                       <TooltipProvider>
                         <Tooltip>
-                          <TooltipTrigger className="flex items-center gap-1 mx-auto">
-                            Avail. Trend <HelpCircle className="h-3 w-3 opacity-50" />
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center gap-1 mx-auto cursor-default">
+                              Avail. Trend <HelpCircle className="h-3 w-3 opacity-50" />
+                            </span>
                           </TooltipTrigger>
                           <TooltipContent>
                             <p className="text-xs">14-day direction of availability rate. ↑ = deteriorating (more OOS), ↓ = improving.</p>
@@ -560,8 +564,10 @@ export default function DemandAvailability() {
                     <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">
                       <TooltipProvider>
                         <Tooltip>
-                          <TooltipTrigger className="flex items-center gap-1 mx-auto">
-                            Missed Demand <HelpCircle className="h-3 w-3 opacity-50" />
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center gap-1 mx-auto cursor-default">
+                              Missed Demand <HelpCircle className="h-3 w-3 opacity-50" />
+                            </span>
                           </TooltipTrigger>
                           <TooltipContent className="max-w-[220px]">
                             <p className="text-xs">Directional signal for unmet demand — higher means more consumers are likely not finding stock. Not a revenue figure; use for prioritisation only.</p>
