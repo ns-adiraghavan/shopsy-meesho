@@ -21,6 +21,7 @@ import {
   Wallet,
   Moon,
   Sun,
+  BarChart3,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,19 @@ export function AppSidebar() {
             Data: Shopsy vs Meesho | Apr 2026
           </div>
         )}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2"
+            asChild
+          >
+            <Link to="/analytics-taxonomy">
+              <BarChart3 className="h-4 w-4 shrink-0" />
+              {!collapsed && <span className="text-xs">Analytics Taxonomy</span>}
+            </Link>
+          </Button>
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
