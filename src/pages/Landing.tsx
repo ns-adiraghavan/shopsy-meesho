@@ -10,43 +10,43 @@ const MODULES = [
     icon: Activity,
     label: "Promotion Budget Optimizer",
     path: "/dashboard/budget",
-    kpis: ["ROI Score", "GMV Uplift (Est.)", "Budget Utilisation", "Promo Type Mix"],
-    description: "Promotion budget optimizer with SKU-level GMV uplift estimates.",
+    kpis: ["ROI Score", "Priority Queue", "Scenario Comparison", "Promo Calendar"],
+    description: "Subcategories ranked by competitive pressure, Gen Z demand, and promotional gap vs Meesho. Compare budget scenarios side by side.",
   },
   {
     icon: CheckCircle2,
     label: "Demand & Availability",
     path: "/dashboard/demand",
-    kpis: ["Demand Score", "Stockout Risk", "Lost Demand Proxy", "Must-Have Health"],
-    description: "Demand intensity signals and stockout risk tracking for supply-side prioritisation.",
+    kpis: ["Demand Pressure", "Stockout Risk", "Demand Exceeds Supply", "Missed Demand"],
+    description: "Demand intensity signals and stockout risk by subcategory. Action queue separates promote-ready from supply-first priorities.",
   },
   {
     icon: Search,
     label: "Gen Z Demand Signals",
     path: "/dashboard/genz",
-    kpis: ["Trending SKUs", "Gen Z Score", "Keyword Rank", "Review Velocity"],
-    description: "Gen Z traction scoring powered by keyword rank and review velocity on Meesho.",
+    kpis: ["Gen Z Traction Score", "Platform Leader", "Response Gap", "Trending Keywords"],
+    description: "Which platform owns Gen Z attention per subcategory — and where Shopsy needs to respond.",
   },
   {
     icon: LayoutDashboard,
     label: "Competitive Overview",
     path: "/dashboard",
     kpis: ["Unanswered Promos", "Avg Price Gap", "Active Promo Rate", "Top ROI Subcategories", "Gen Z Traction", "Availability Rate"],
-    description: "Side-by-side Shopsy vs Meesho scorecard with category pressure map and event feed.",
+    description: "Side-by-side Shopsy vs Meesho scorecard with category pressure matrix and competitive event feed.",
   },
   {
     icon: Tag,
     label: "Pricing & Promotions",
     path: "/dashboard/pricing",
-    kpis: ["Avg Price Gap", "SKUs Overpriced", "Discount Depth", "Flash Sale Candidates"],
-    description: "Price gap tracking across 600 SKUs in Fashion, Beauty & Accessories.",
+    kpis: ["Avg Price Gap", "SKUs Overpriced", "Promo Intensity Gap", "Unanswered Promos"],
+    description: "Subcategory-level price gap and promotion activity vs Meesho, with 14-day trend and unanswered campaign detection.",
   },
   {
     icon: Package,
     label: "Assortment Intelligence",
     path: "/dashboard/assortment",
-    kpis: ["SKU Coverage %", "Gap Brands", "Category Depth"],
-    description: "Assortment gap analysis with quick-add candidate identification across platforms.",
+    kpis: ["Catalogue Depth", "Critical Depth Gaps", "High Priority Gaps", "Assortment Priority"],
+    description: "Shopsy catalogue coverage vs Meesho by subcategory — where listing gaps overlap with high Gen Z demand.",
   },
 ];
 
@@ -88,10 +88,10 @@ const Landing = () => {
         </p>
         <div className="flex flex-col items-center gap-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left text-sm text-muted-foreground max-w-lg">
-            <span>✦ Price gap tracking across 600 SKUs in Fashion, Beauty & Accessories</span>
-            <span>✦ Gen Z traction scoring powered by keyword rank and review velocity</span>
-            <span>✦ Promotion budget optimizer with SKU-level GMV uplift estimates</span>
-            <span>✦ Assortment gap analysis with quick-add candidate identification</span>
+            <span>✦ Price gap and promo intensity tracking across 42 subcategories</span>
+            <span>✦ Gen Z traction scoring with platform ownership and response gap analysis</span>
+            <span>✦ Promotion priority queue ranked by competitive pressure vs Meesho</span>
+            <span>✦ Assortment depth gaps mapped to Gen Z demand signals</span>
           </div>
           <Button size="lg" asChild>
             <Link to="/login">View Dashboard</Link>
@@ -139,7 +139,7 @@ const Landing = () => {
             alt="Netscribes — Shopsy vs Meesho Intelligence"
             className="h-5 w-auto object-contain"
           />
-          <span className="text-xs text-muted-foreground">© 2025 Netscribes · Shopsy vs Meesho Competitive Intelligence</span>
+          <span className="text-xs text-muted-foreground">© 2026 Netscribes · Shopsy vs Meesho Competitive Intelligence</span>
         </div>
       </footer>
     </div>
