@@ -52,17 +52,6 @@ export function DashboardLayout() {
 
             <div className="h-4 w-px bg-border" />
 
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="h-8 w-44 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map((c) => (
-                  <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             <div className="ml-auto flex items-center gap-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <div className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
