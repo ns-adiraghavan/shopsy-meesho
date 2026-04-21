@@ -191,7 +191,7 @@ function allocate(budget: number, pool: PromotionROI[]): AllocResult {
   let spent = 0;
   const result: PromotionROI[] = [];
   for (const r of pool) {
-    const cost = r.recommended_discount * 10;
+    const cost = r.estimated_promo_cost_cr;
     if (spent + cost > budget) continue;
     result.push(r);
     spent += cost;
