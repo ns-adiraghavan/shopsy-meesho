@@ -35,6 +35,7 @@ import {
   YAxis,
   CartesianGrid,
   LabelList,
+  ReferenceLine,
 } from "recharts";
 import {
   getPromotionROI,
@@ -301,9 +302,42 @@ function PriorityQueueTable({ rows }: { rows: PromotionROI[] }) {
                   </Tooltip>
                 </TooltipProvider>
               </th>
-              <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Price Gap</th>
-              <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Meesho Promo</th>
-              <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Shopsy Avail.</th>
+              <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger className="flex items-center gap-1 mx-auto cursor-default">
+                      Price Gap <HelpCircle className="h-3 w-3 opacity-50" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[240px]">
+                      <p className="text-xs">Shopsy's average selling price minus Meesho's, as a percentage. Positive (red) = Shopsy is more expensive — a stronger case for a promotional discount.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </th>
+              <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger className="flex items-center gap-1 mx-auto cursor-default">
+                      Meesho Promo <HelpCircle className="h-3 w-3 opacity-50" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[240px]">
+                      <p className="text-xs">Percentage of the last 14 days on which Meesho ran a promotion in this subcategory. High values mean Meesho is actively buying share here.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </th>
+              <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger className="flex items-center gap-1 mx-auto cursor-default">
+                      Shopsy Avail. <HelpCircle className="h-3 w-3 opacity-50" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[240px]">
+                      <p className="text-xs">Proportion of Shopsy SKUs in-stock on the latest date. Below 75% = high stockout risk — resolve stock before running a promotion here.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </th>
               <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Rec. Promo</th>
               <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Disc. %</th>
               <th className="text-center py-2.5 pl-2 pr-4 font-medium text-muted-foreground">Priority</th>
@@ -460,6 +494,9 @@ function PromoCalendar() {
           </span>
           <span className="inline-flex items-center gap-1 ml-2">
             <span className="inline-block w-3 h-3 rounded-sm bg-red-500" /> Meesho campaign — Shopsy silent
+          </span>
+          <span className="inline-flex items-center gap-1 ml-2">
+            <span className="inline-block w-3 h-3 rounded-sm bg-violet-400" /> Both promoting
           </span>
         </p>
       </CardHeader>
@@ -624,6 +661,7 @@ export default function PromotionBudgetOptimizer() {
   }, [allROI]);
 
   const p1Count = allROI.filter((r) => r.budget_priority === "P1 — Act Now").length;
+  const p1Captured = (rows: PromotionROI[]) => rows.filter((r) => r.budget_priority === "P1 — Act Now").length;
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
@@ -712,7 +750,7 @@ export default function PromotionBudgetOptimizer() {
                 value={fmt1(scenA.avgROI)}
                 subtitle="avg across selected"
                 color="green"
-                tooltip="Average ROI score across the subcategories selected. Higher means each spend decision has a stronger competitive justification."
+                tooltip="Composite score (0–100) across the subcategories selected. Scores above 70 indicate a strong competitive case to promote now. Higher = each rupee of spend targets a subcategory with a larger price gap, active Meesho competition, strong Gen Z demand, or healthy stock."
               />
               <KPICard
                 title="Scenario B — Subcategories"
@@ -726,7 +764,7 @@ export default function PromotionBudgetOptimizer() {
                 value={fmt1(scenB.avgROI)}
                 subtitle="avg across selected"
                 color="amber"
-                tooltip="Average ROI score across the subcategories selected under Scenario B."
+                tooltip="Composite score (0–100) across the subcategories selected under Scenario B. Same scale as Scenario A — compare directly to judge quality of spend at the higher budget."
               />
             </div>
 
@@ -735,6 +773,9 @@ export default function PromotionBudgetOptimizer() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">
                     Scenario A — Rs {budgetA}Cr · {scenA.subcatCount} subcategories · Avg ROI {fmt1(scenA.avgROI)}
+                    <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                      ({p1Captured(scenA.rows)} of {p1Count} P1 captured)
+                    </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 pb-2">
@@ -746,6 +787,9 @@ export default function PromotionBudgetOptimizer() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">
                     Scenario B — Rs {budgetB}Cr · {scenB.subcatCount} subcategories · Avg ROI {fmt1(scenB.avgROI)}
+                    <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                      ({p1Captured(scenB.rows)} of {p1Count} P1 captured)
+                    </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 pb-2">
@@ -816,6 +860,12 @@ export default function PromotionBudgetOptimizer() {
                     {...chartTooltipProps}
                     formatter={(v: number) => [v.toFixed(1), "Avg ROI Score"]}
                   />
+                  <ReferenceLine
+                    x={70}
+                    stroke="hsl(142, 71%, 45%)"
+                    strokeDasharray="4 3"
+                    label={{ value: "Strong opportunity", position: "top", fontSize: 10, fill: "hsl(142, 71%, 45%)" }}
+                  />
                   <Bar dataKey="avgROI" radius={[0, 4, 4, 0]}>
                     {categoryROIData.map((_, i) => (
                       <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
@@ -839,7 +889,7 @@ export default function PromotionBudgetOptimizer() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Recommended Promo Mix</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Distribution of recommended promo types across all ranked subcategories
+              Distribution of recommended promo types across all ranked subcategories — regardless of budget scenario or priority filter.
             </p>
           </CardHeader>
           <CardContent className="flex justify-center">

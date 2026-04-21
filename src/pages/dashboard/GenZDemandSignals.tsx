@@ -289,6 +289,9 @@ export default function GenZDemandSignals() {
         <p className="text-xs text-muted-foreground mt-0.5">
           Subcategory-level Gen Z traction — which platform owns the signal, where Shopsy must respond
         </p>
+        <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
+          <span className="font-medium text-foreground">Gen Z traction score (0–100)</span> is a composite index reflecting search keyword velocity, trend momentum, and review sentiment signals among 18–25 year old shoppers for each subcategory × platform combination. Scores above 80 = Trending; 65–79 = Rising; 50–64 = Emerging.
+        </p>
       </div>
 
       {/* ── Section 1 — KPIs ──────────────────────────────────────────── */}
@@ -379,7 +382,7 @@ export default function GenZDemandSignals() {
                         </Tooltip>
                       </TooltipProvider>
                     </th>
-                    <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Trending Keywords</th>
+                    <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">Trend Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -424,14 +427,12 @@ export default function GenZDemandSignals() {
                             {row.score_gap.toFixed(1)}
                           </span>
                         </td>
-                        <td className="py-2 px-3">
-                          <div className="flex flex-wrap gap-1">
-                            {(CATEGORY_KEYWORDS[row.category] ?? []).slice(0, 3).map((kw) => (
-                              <span key={kw} className="inline-block rounded-full bg-muted text-muted-foreground text-[9px] px-1.5 py-0.5 whitespace-nowrap">
-                                {kw}
-                              </span>
-                            ))}
-                          </div>
+                        <td className="py-2.5 px-3 text-center">
+                          {trendBadge(
+                            row.shopsy_score >= 80 || row.meesho_score >= 80 ? "Trending" :
+                            row.shopsy_score >= 65 || row.meesho_score >= 65 ? "Rising" :
+                            row.shopsy_score >= 50 || row.meesho_score >= 50 ? "Emerging" : "Watching"
+                          )}
                         </td>
                       </tr>
                     ))
@@ -561,8 +562,30 @@ export default function GenZDemandSignals() {
                     <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Gen Z Signal</th>
                     <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">Meesho Score</th>
                     <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">Shopsy Score</th>
-                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Score Gap</th>
-                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">Price Premium</th>
+                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger className="flex items-center gap-1 mx-auto cursor-default">
+                            Shopsy Deficit <HelpCircle className="h-3 w-3 opacity-50" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[220px]">
+                            <p className="text-xs">How many points Shopsy's Gen Z traction score trails Meesho in this subcategory. Larger number = Meesho has a more dominant Gen Z position here.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </th>
+                    <th className="text-center py-2.5 px-2 font-medium text-muted-foreground">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger className="flex items-center gap-1 mx-auto cursor-default">
+                            Shopsy Price Premium <HelpCircle className="h-3 w-3 opacity-50" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[240px]">
+                            <p className="text-xs">Shopsy's average price vs Meesho's in this subcategory. Positive = Shopsy is more expensive. A price premium on top of a Gen Z deficit compounds the risk of losing this customer segment.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </th>
                     <th className="text-center py-2.5 pl-2 pr-4 font-medium text-muted-foreground">Meesho Campaign</th>
                   </tr>
                 </thead>
@@ -587,7 +610,7 @@ export default function GenZDemandSignals() {
                       </td>
                       <td className="py-2.5 px-2 text-center">
                         <span className="inline-block rounded px-2 py-0.5 text-xs font-semibold tabular-nums bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400">
-                          -{row.score_gap.toFixed(1)}
+                          {row.score_gap.toFixed(1)}
                         </span>
                       </td>
                       <td className="py-2.5 px-2 text-center">
