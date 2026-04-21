@@ -46,25 +46,25 @@ function getHardcodedResponse(userMessage: string, pageLabel: string): string {
   const q = userMessage.toLowerCase();
 
   if (q.includes("competitiveness") || q.includes("overall") || q.includes("score")) {
-    return "**Competitive Score**\n- Meesho: 65 vs Shopsy: 59\n- Shopsy lags on promotion intensity (15% vs 23%) and search visibility (81% vs 93%).\n- Shopsy\u2019s advantage: availability rate (84.9% vs 81.5%) and Flipkart-exclusive brands in Men\u2019s Casual Wear and Footwear.";
+    return "**Competitive Score**\n- Meesho: 53 vs Shopsy: 49\n- Shopsy lags on promotion intensity (12% vs 17%) and search visibility (34% vs 38%).\n- Shopsy's advantage: availability rate (87% vs 84%) and stronger depth in Electronics, Men's Fashion, and Footwear.";
   }
   if (q.includes("price gap") || q.includes("overpriced")) {
-    return "**Price Gap Summary**\n- Shopsy is overpriced vs Meesho by +13.5% on average.\n- Worst categories: Accessories (+14%), Women\u2019s Western Wear (+12%), Beauty & Skincare (+10%).\n- Shopsy is cheaper in: Men\u2019s Casual Wear (\u22122%), Footwear (\u22123%), Innerwear (\u22121%).";
+    return "**Price Gap Summary**\n- Shopsy is overpriced vs Meesho by +7% on average across monitored subcategories.\n- Worst categories: Home & Kitchen (+13%), Women's Western Wear (+11%), Jewellery & Accessories (+10%).\n- Shopsy is price-competitive or cheaper in: Electronics (−4%), Men's Sports Shoes (−4%), Personal Care Appliances (−4%).";
   }
   if (q.includes("promo") || q.includes("promotion") || q.includes("discount")) {
-    return "**Promotion Gap**\n- Meesho promo rate: 23% of SKU-days vs Shopsy: 14.8%.\n- Meesho average discount depth: 23.7% vs Shopsy: 15.4%.\n- Meesho is running Flash Sales in Accessories and Women\u2019s Western Wear \u2014 Shopsy has not responded in either category.";
+    return "**Promotion Gap**\n- Meesho promo rate: 17% of subcategory-days vs Shopsy: 12%.\n- Meesho average discount depth: 16% vs Shopsy: 13%.\n- Meesho is running Flash Sales in Co-ord Sets and Skincare — Shopsy has not responded in either subcategory.";
   }
   if (q.includes("gen z") || q.includes("genz") || q.includes("trending") || q.includes("traction")) {
-    return "**Gen Z Demand Signals**\n- Top trending on Meesho: Co-ord sets, Glass Skin Routine, Y2K Dresses, Aesthetic Accessories.\n- StyleCast and Anouk score above 70 on Meesho \u2014 both are under-listed on Shopsy.\n- Shopsy wins 0 of the top-3 Gen Z keyword slots. Meesho dominates 78% of Gen Z top-10 positions.";
+    return "**Gen Z Demand Signals**\n- Top trending subcategories: Co-ord Sets, Oversized T-shirts, Skincare Serums, Audio Earbuds, Aesthetic Home Decor.\n- Shopsy leads Gen Z depth in Electronics and Men's Oversized — Meesho leads in Women's Western Wear and Beauty.\n- 9 high Gen Z subcategories where Shopsy trails Meesho on assortment depth.";
   }
   if (q.includes("assortment") || q.includes("catalogue") || q.includes("missing") || q.includes("gap")) {
     return "**Assortment Gap**\n- Meesho lists 533 SKUs; Shopsy lists 498.\n- Meesho-leaning brands (StyleCast, SASSAFRAS, Anouk, Rangmanch) have 91% listing rate on Meesho vs 52% on Shopsy.\n- 6 high-priority gap brands identified: StyleCast, SASSAFRAS, Anouk, Rangmanch, Limelight, Trendzolook.";
   }
   if (q.includes("stockout") || q.includes("availability") || q.includes("oos") || q.includes("supply")) {
-    return "**Availability & Demand**\n- Shopsy overall availability: 84.9% (better than Meesho\u2019s 81.5% due to Flipkart logistics).\n- Shopsy stockout clusters: Women\u2019s Ethnic Wear (83% available = 17% OOS risk) and Beauty & Skincare (81%).\n- High demand + high stockout SKUs should be supply-fixed before any promotion is run.";
+    return "**Availability & Demand**\n- Shopsy overall availability: 87% vs Meesho 84% — Flipkart logistics advantage holds.\n- Stockout pressure on Meesho: Co-ord Sets (76%), Skincare Serums (78%), Artificial Jewellery (79%).\n- High demand + high stockout subcategories should be supply-stabilised before any promotion is run.";
   }
   if (q.includes("budget") || q.includes("spend") || q.includes("allocat") || q.includes("gmv") || q.includes("roi")) {
-    return "**Promotion Budget Optimizer**\n- At \u20B95,00,000 budget: top allocation is Women\u2019s Western Wear Flash Sale (12% discount), Beauty & Skincare Coupon (10%), Accessories Flat Discount (8%).\n- Estimated GMV uplift is a synthetic benchmark \u2014 replace with Shopsy\u2019s actual conversion data for production use.\n- Filter out OOS SKUs before any allocation \u2014 never promote what you can\u2019t fulfil.";
+    return "**Promotion Budget Optimizer**\n- At Rs 250L budget: top allocation covers 3–4 P1 subcategories led by Co-ord Sets (Flash Sale), Kitchen Storage (Coupon), and Skincare Serums (Flat Discount).\n- The optimizer ranks by competitive pressure, Gen Z signal, and Shopsy availability — never promote a subcategory with availability below 75%.\n- Run Scenario A vs B to compare focused high-ROI spend against broader coverage.";
   }
   if (q.includes("explain") || q.includes("this page")) {
     return `**${pageLabel}**\nThis page provides competitive intelligence for the Shopsy vs Meesho dashboard. Key areas:\n- Price gap analysis and promotion tracking\n- Gen Z demand signals from Meesho\n- Assortment gap identification\n- Budget allocation recommendations\n\nTry asking about specific topics like price gaps, Gen Z trends, or stockout risks.`;
