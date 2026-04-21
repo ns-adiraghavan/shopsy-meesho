@@ -577,8 +577,8 @@ function PromoCalendar() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function PromotionBudgetOptimizer() {
-  const [budgetA, setBudgetA]       = useState("100");   // was "300"
-  const [budgetB, setBudgetB]       = useState("250");   // was "500"
+  const [budgetA, setBudgetA]       = useState("3");   // was "300"
+  const [budgetB, setBudgetB]       = useState("6");   // was "500"
   const [scenarioRun, setScenarioRun] = useState(false);
   const [p1Only, setP1Only]         = useState(false);
 
@@ -653,7 +653,7 @@ export default function PromotionBudgetOptimizer() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Scenario A — Budget (Rs Lakhs)</label>
+                <label className="text-xs font-medium text-muted-foreground">Scenario A — Budget (Rs Crore / month)</label>
                 <Input
                   type="number"
                   value={budgetA}
@@ -663,7 +663,7 @@ export default function PromotionBudgetOptimizer() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Scenario B — Budget (Rs Lakhs)</label>
+                <label className="text-xs font-medium text-muted-foreground">Scenario B — Budget (Rs Crore / month)</label>
                 <Input
                   type="number"
                   value={budgetB}
