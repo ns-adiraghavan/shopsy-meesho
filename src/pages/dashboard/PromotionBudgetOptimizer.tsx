@@ -577,8 +577,8 @@ function PromoCalendar() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function PromotionBudgetOptimizer() {
-  const [budgetA, setBudgetA]       = useState("300");
-  const [budgetB, setBudgetB]       = useState("500");
+  const [budgetA, setBudgetA]       = useState("100");   // was "300"
+  const [budgetB, setBudgetB]       = useState("250");   // was "500"
   const [scenarioRun, setScenarioRun] = useState(false);
   const [p1Only, setP1Only]         = useState(false);
 

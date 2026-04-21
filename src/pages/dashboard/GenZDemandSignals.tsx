@@ -508,7 +508,7 @@ export default function GenZDemandSignals() {
                 margin={{ left: 160, right: 50, top: 5, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} fontSize={11} />
+                <XAxis type="number" domain={[0, 60]} tickFormatter={(v: number) => `${v}%`} fontSize={11} />
                 <YAxis
                   type="category"
                   dataKey="subcategory"

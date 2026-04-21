@@ -280,7 +280,7 @@ export default function DemandAvailability() {
           title="Demand Exceeds Supply"
           value={String(demandShopsy.filter((r) => r.demand_score > 55 && r.stockout_risk > 0.15).length)}
           subtitle="subcategories: high demand, low stock"
-          color={totalLostDemand > 500 ? "red" : "amber"}
+          color={totalLostDemand > 300 ? "red" : "amber"}   // was > 500
           tooltip="Subcategories where consumer demand is strong but Shopsy availability is under pressure — the most urgent replenishment candidates."
         />
       </div>
