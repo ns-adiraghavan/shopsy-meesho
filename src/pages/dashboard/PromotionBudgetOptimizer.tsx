@@ -191,7 +191,7 @@ function allocate(budget: number, pool: PromotionROI[]): AllocResult {
   let spent = 0;
   const result: PromotionROI[] = [];
   for (const r of pool) {
-    const cost = r.recommended_discount * 10;
+    const cost = r.estimated_promo_cost_cr;
     if (spent + cost > budget) continue;
     result.push(r);
     spent += cost;
@@ -577,8 +577,8 @@ function PromoCalendar() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function PromotionBudgetOptimizer() {
-  const [budgetA, setBudgetA]       = useState("100");   // was "300"
-  const [budgetB, setBudgetB]       = useState("250");   // was "500"
+  const [budgetA, setBudgetA]       = useState("3");   // was "300"
+  const [budgetB, setBudgetB]       = useState("6");   // was "500"
   const [scenarioRun, setScenarioRun] = useState(false);
   const [p1Only, setP1Only]         = useState(false);
 
@@ -646,14 +646,15 @@ export default function PromotionBudgetOptimizer() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Compare two budget levels</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Enter two budget levels to compare how many subcategories each covers and the
-              average quality of spend. The optimizer fills from the highest-ROI subcategories down.
+              Enter two monthly promotional budgets in Rs Crore to compare how many subcategories each covers and the
+              average quality of spend. Cost per subcategory is estimated from order volume, average price, and recommended
+              discount depth across 30% promotional reach. The optimizer fills from the highest-ROI subcategories down.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Scenario A — Budget (Rs Lakhs)</label>
+                <label className="text-xs font-medium text-muted-foreground">Scenario A — Budget (Rs Crore / month)</label>
                 <Input
                   type="number"
                   value={budgetA}
@@ -663,7 +664,7 @@ export default function PromotionBudgetOptimizer() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Scenario B — Budget (Rs Lakhs)</label>
+                <label className="text-xs font-medium text-muted-foreground">Scenario B — Budget (Rs Crore / month)</label>
                 <Input
                   type="number"
                   value={budgetB}
@@ -733,22 +734,22 @@ export default function PromotionBudgetOptimizer() {
               <Card className="border-l-4 border-l-blue-400">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">
-                    Scenario A — Rs{budgetA}L · {scenA.subcatCount} subcategories · Avg ROI {fmt1(scenA.avgROI)}
+                    Scenario A — Rs {budgetA}Cr · {scenA.subcatCount} subcategories · Avg ROI {fmt1(scenA.avgROI)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 pb-2">
-                  <AllocTable rows={scenA.rows} label={`A (Rs${budgetA}L)`} />
+                  <AllocTable rows={scenA.rows} label={`A (Rs${budgetA}Cr)`} />
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-amber-400">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">
-                    Scenario B — Rs{budgetB}L · {scenB.subcatCount} subcategories · Avg ROI {fmt1(scenB.avgROI)}
+                    Scenario B — Rs {budgetB}Cr · {scenB.subcatCount} subcategories · Avg ROI {fmt1(scenB.avgROI)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 pb-2">
-                  <AllocTable rows={scenB.rows} label={`B (Rs${budgetB}L)`} />
+                  <AllocTable rows={scenB.rows} label={`B (Rs${budgetB}Cr)`} />
                 </CardContent>
               </Card>
             </div>

@@ -154,6 +154,7 @@ export interface PromotionROI {
   recommended_discount: number;
   avg_subcategory_price_inr: number;
   estimated_monthly_orders: number;
+  estimated_promo_cost_cr: number;  // real monthly promo cost in Rs Crore (orders × price × disc × 0.30 coverage)
   orders_at_risk: number;
   orders_at_risk_label: string;
   budget_priority: BudgetPriority;
